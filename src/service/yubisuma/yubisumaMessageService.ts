@@ -27,7 +27,10 @@ export class YubisumaMessageService {
         }
       }
       const recent = await channel.messages.fetch({ limit: 100 });
-      const recovered = recent.find(message => message.author.id === this.client.user?.id && message.embeds.some(embed => embed.footer?.text === `ys-game:${game.id}`));
+      const recovered = recent.find(message => message.author.id === this.client.user?.id && (
+        message.components.some(row => 'components' in row && row.components.some(component => 'customId' in component && component.customId === `ys:open:${game.id}`))
+        || message.embeds.some(embed => embed.footer?.text === `ys-game:${game.id}`)
+      ));
       if (recovered) {
         game.messageId = recovered.id;
         await recovered.edit(payload);

@@ -39,6 +39,15 @@ test('wrong guild or channel is rejected before DB access', async () => {
     assert.equal(f.room.games.length, 0);
   }
 });
+test('private menu actions update the same ephemeral message without creating another reply', async () => {
+  const f = fixture('ys:cpu');
+  f.interaction.message = { flags: { has: flag => flag === MessageFlags.Ephemeral } };
+  f.interaction.deferUpdate = async () => { f.events.push('defer'); f.interaction.deferred = true; };
+  f.interaction.deferReply = async () => { assert.fail('must update the private message'); };
+  await handleYubisumaInteraction(f.interaction, f.deps);
+  assert.deepEqual(f.events, ['defer', 'db', 'reply', 'publish']);
+  assert.equal(f.room.games.length, 1);
+});
 test('user select acknowledges before Discord member lookup', async () => {
   const f = fixture('ys:opponent', 'user');
   f.interaction.values = ['444444444444444444'];

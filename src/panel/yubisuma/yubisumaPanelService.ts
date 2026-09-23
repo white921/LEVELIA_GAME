@@ -50,15 +50,15 @@ export function gameBoard(game: Game) {
   else description += `\n${label(game.players[game.winner!])}の勝ち！${game.status === 'forfeited' ? '（相手が降参）' : ''}`;
   description += resultText(game);
   return {
-    embeds: [new EmbedBuilder().setTitle('指スマ対戦').setDescription(description).setColor(game.status === 'active' ? 0x9b59b6 : 0x2ecc71).setFooter({ text: `ys-game:${game.id}` })],
-    components: game.status === 'active' ? [new ActionRowBuilder<ButtonBuilder>().addComponents(button(`ys:open:${game.id}`, '入力・進行を確認', ButtonStyle.Primary))] : [],
+    embeds: [new EmbedBuilder().setTitle('指スマ対戦').setDescription(description).setColor(game.status === 'active' ? 0x9b59b6 : 0x2ecc71)],
+    components: [new ActionRowBuilder<ButtonBuilder>().addComponents(button(`ys:open:${game.id}`, game.status === 'active' ? '入力・進行を確認' : '対戦結果を確認', game.status === 'active' ? ButtonStyle.Primary : ButtonStyle.Secondary))],
     allowedMentions: noMentions,
   };
 }
 
 export function privateGamePanel(game: Game, seat: Seat) {
   const board = gameBoard(game);
-  if (game.status !== 'active') return { ...board, content: 'この対戦は終了しました。「プレイ開始」から次の対戦ができます。' };
+  if (game.status !== 'active') return { ...board, components: [], content: 'この対戦は終了しました。「プレイ開始」から次の対戦ができます。' };
   const controls = new ActionRowBuilder<ButtonBuilder>().addComponents(
     button(`ys:open:${game.id}`, '対戦に戻る'), button(`ys:quit-check:${game.id}`, '降参する', ButtonStyle.Danger),
   );

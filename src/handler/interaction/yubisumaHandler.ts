@@ -12,7 +12,8 @@ export async function handleYubisumaInteraction(interaction: Interaction, deps: 
   if (!(interaction.isButton() || interaction.isUserSelectMenu() || interaction.isStringSelectMenu()) || !interaction.customId.startsWith('ys:')) return;
   try {
     // Acknowledge before all DB, Discord member fetches, and message publishing.
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    if (interaction.message?.flags.has(MessageFlags.Ephemeral)) await interaction.deferUpdate();
+    else await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     if (interaction.guildId !== deps.scope.guildId || interaction.channelId !== deps.scope.channelId) throw new GameError('このパネルは指定の指スマスレッドで使用してください。');
     const userId = interaction.user.id;
     const [, action, gameId, roundValue] = interaction.customId.split(':');
