@@ -8,7 +8,16 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   };
 
   const discordToken = required('DISCORD_TOKEN');
-  const mysqlUrl = required('MYSQL_URL');
+  let mysqlUrl = env.MYSQL_URL?.trim();
+  if (!mysqlUrl) {
+    const host = required('MYSQLHOST');
+    const port = required('MYSQLPORT');
+    const user = required('MYSQLUSER');
+    const password = required('MYSQLPASSWORD');
+    const database = required('MYSQL_DATABASE');
+    if (!/^\d+$/.test(port) || Number(port) < 1 || Number(port) > 65535) throw new Error('MYSQLPORT must be a valid TCP port');
+    mysqlUrl = `mysql://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:${port}/${encodeURIComponent(database)}`;
+  }
   let parsed: URL;
   try {
     parsed = new URL(mysqlUrl);
@@ -24,5 +33,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     throw new Error('GUILD_ID must be a Discord server ID (17-20 digits)');
   }
 
-  return { discordToken, mysqlUrl, guildId };
+  const balanceMode = env.BALANCE_MODE?.trim() || 'unavailable';
+  if (balanceMode !== 'lia' && balanceMode !== 'unavailable') throw new Error('BALANCE_MODE must be lia or unavailable');
+  return { discordToken, mysqlUrl, guildId, balanceMode };
 }

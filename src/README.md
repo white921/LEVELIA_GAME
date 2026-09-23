@@ -4,7 +4,7 @@ KARUMAの `src/README.md` にある役割別・機能別の配置を採用する
 同じ機能には各層で共通のフォルダ名を使い、実行基盤は `system`、全体共通の定義は `shared` に置く。
 実装が必要な層だけにフォルダを作る。
 
-| 層 | 役割 | 指スマ追加時の配置例 |
+| 層 | 役割 | 配置例 |
 | --- | --- | --- |
 | `command` | スラッシュコマンドの定義と入口 | `command/panel/panel.ts` |
 | `handler` | イベント・操作の振り分け | `handler/interaction/userSelectHandler.ts` |
@@ -15,9 +15,9 @@ KARUMAの `src/README.md` にある役割別・機能別の配置を採用する
 | `util` | 入力チェックや補助処理 | `util/system/runtimeConfig.ts` |
 | `sql` | 新規DB定義とマイグレーション | `sql/createTable.sql` |
 
-表の配置例は将来の実装先を示す。ゲーム、パネル、コマンド、SQLはまだ実装していない。
+指スマの処理は `service/yubisuma`、画面構築は `panel/yubisuma`、操作受付は `handler/interaction/yubisumaHandler.ts`、期限管理・投稿再試行は `handler/system` に置く。コマンドは使わず、パネル設置の入口は `installPanel.ts`、DBマイグレーションの入口は `migrate.ts` とする。
 
-## 現在の配置
+## 実行基盤の配置
 
 ```text
 src/
