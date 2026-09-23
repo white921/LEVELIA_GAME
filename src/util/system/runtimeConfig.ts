@@ -19,5 +19,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     throw new Error('MYSQL_URL must use mysql:// and include a host and database name');
   }
 
-  return { discordToken, mysqlUrl };
+  const guildId = required('GUILD_ID');
+  if (!/^[1-9]\d{16,19}$/.test(guildId)) {
+    throw new Error('GUILD_ID must be a Discord server ID (17-20 digits)');
+  }
+
+  return { discordToken, mysqlUrl, guildId };
 }

@@ -41,7 +41,8 @@ src/
 - 常設パネルの描画・設置は `panel`、ゲーム進行中の処理とそれに必要な確認画面はサービス側で扱う。
 - 固定値は `constant`、型は `type` に分け、型は `import type` で参照する。
 - 接続プールやゲーム進行中の状態などの可変値は、使用する処理内で管理する。
-- Discordの運用IDを追加するときは `constant/shared` にまとめる。
+- `GUILD_ID` はRailwayの環境変数（ローカルでは `.env`）で設定し、`loadConfig()` の `guildId` から文字列のまま参照する。
+- その他のDiscordの運用IDを追加するときは `constant/shared` にまとめる。
 - importは対象ファイルを直接指定し、一括再export用の `index.ts` は追加しない。
 - ESMのため、TypeScriptソースのimportにも出力先の `.js` 拡張子を付ける。
 

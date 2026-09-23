@@ -34,6 +34,9 @@ npm run build
 | --- | --- |
 | `DISCORD_TOKEN` | LEVELIA_GAME用のBotトークン |
 | `MYSQL_URL` | 接続先DB名を含む `mysql://` 接続URL |
+| `GUILD_ID` | 対象のDiscordサーバーID。Railwayの環境変数で指定 |
+
+すべて起動時に必須です。`GUILD_ID` はコードに固定せず、文字列として読み込みます。ローカル開発では `.env` に設定してください。
 
 ```sh
 npm run dev
@@ -54,7 +57,7 @@ npm start
 ## Railway（将来のデプロイ手順）
 
 1. このリポジトリを接続し、常駐Workerとしてサービスを作成します。
-2. `DISCORD_TOKEN` と `MYSQL_URL` をRailway Variablesに設定します。ローカルの `.env` はアップロードされません。
+2. `DISCORD_TOKEN`・`MYSQL_URL`・`GUILD_ID` をRailway Variablesに設定します。ローカルの `.env` はアップロードされません。
 3. `railway.json` のビルド・起動コマンドを使用します。HTTP公開ドメインやHTTPヘルスチェックは不要です。
 4. Deploy Logsで `MySQL connection verified` と `LEVELIA_GAME ready` を確認します。
 

@@ -12,6 +12,7 @@
 - 相互選択が成立したらマッチングし、指スマを開始する。
 - 設置先はLEVELIAのカジノカテゴリーを予定。パネルはまだ設置しない。
 - Railway / TypeScript / MySQLを採用する。
+- 対象サーバーの `GUILD_ID` はRailwayの環境変数で設定する。
 - 既存LEVELIA Botとはリポジトリを分け、`LEVELIA_GAME` としてGitHubでPublic管理する。
 
 ## 実装時の候補（未確定）
