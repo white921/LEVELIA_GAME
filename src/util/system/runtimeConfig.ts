@@ -1,7 +1,4 @@
-export interface Config {
-  discordToken: string;
-  mysqlUrl: string;
-}
+import type { Config } from '../../type/system/runtimeConfig.js';
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const required = (name: string): string => {

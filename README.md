@@ -14,6 +14,10 @@ LEVELIA向けのDiscordゲームBot。既存のLEVELIA Botとは独立したリ�
 
 `package.json` の `private: true` はnpmへの誤公開を防ぐ設定です。GitHubリポジトリのPublic設定とは独立しています。
 
+フォルダ構成はKARUMAに合わせ、役割別の層の下を機能別に分けます。
+DB処理は `service/system`、固定設定は `constant/system`、型は `type/system`、補助処理は `util/system` に配置しています。
+パネルやゲーム実装時も同じ配置ルールを使います。詳細は [ソースコードの配置](src/README.md) を参照してください。
+
 ## 開発準備
 
 ```sh
@@ -59,7 +63,7 @@ npm start
 ## 検証・トラブルシューティング
 
 - `npm run check`: TypeScriptの型チェック。
-- `npm run build`: `dist/` へのビルド。CIでも両方を実行します。
+- `npm run build`: `dist/` を削除してからビルド。CIでも両方を実行します。
 - 起動直後に停止する場合は必須環境変数を確認してください。
 - `Startup failed` の場合はエラーコードとRailway Deploy Logsを確認し、MySQLの到達性・DB名・Botトークンを確認してください。秘密値そのものはログへ出さないでください。
 - パネルが出ないのは現段階では仕様です。起動時の自動投稿処理はありません。

@@ -1,7 +1,9 @@
 import { config as loadEnv } from 'dotenv';
 import { Client, Events, GatewayIntentBits } from 'discord.js';
-import { loadConfig } from './config.js';
-import { createDatabase } from './lib/database.js';
+import { SHUTDOWN_TIMEOUT_MS } from './constant/system/runtime.js';
+import { createDatabase } from './service/system/dbService.js';
+import { errorCode } from './util/system/error.js';
+import { loadConfig } from './util/system/runtimeConfig.js';
 
 loadEnv({ quiet: true });
 
@@ -17,20 +19,11 @@ const database = createDatabase(config.mysqlUrl);
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 let stopping = false;
 
-// Avoid logging raw SDK errors: request details can contain credentials.
-function errorCode(error: unknown): string {
-  if (error && typeof error === 'object' && 'code' in error) {
-    const code = String(error.code);
-    if (/^[A-Za-z0-9_]+$/.test(code)) return code;
-  }
-  return 'UNKNOWN_ERROR';
-}
-
 async function shutdown(exitCode: number): Promise<void> {
   if (stopping) return;
   stopping = true;
   process.exitCode = exitCode;
-  const timeout = setTimeout(() => process.exit(1), 10_000);
+  const timeout = setTimeout(() => process.exit(1), SHUTDOWN_TIMEOUT_MS);
   timeout.unref();
   try {
     await client.destroy();

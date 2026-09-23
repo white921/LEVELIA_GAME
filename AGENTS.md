@@ -2,6 +2,10 @@
 
 - 既存のLEVELIA Bot（KARUMA）とは独立したリポジトリ。
 - TypeScript / ESM / discord.js v14 / MySQL / RailwayのWorker構成。
+- フォルダ構成はKARUMAの役割別・機能別の配置に合わせる。詳細は `src/README.md`。
+- `command` / `handler` / `panel` / `service` / `constant` / `type` / `util` / `sql` のうち必要な層だけを作り、各層の下を機能別に分ける。実行基盤は `system`、全体共通は `shared`。
+- 固定設定は `constant/<機能>`、interfaceと名前付きtypeは `type/<機能>`。型は `import type` で参照し、可変な実行時状態は使用する処理内で管理する。
+- 一括再export用の `index.ts` は作らず、対象ファイルから直接importする。
 - 現段階は開発基盤のみ。ゲーム仕様は `docs/yubisuma.md` を参照する。
 - ユーザーから設置指示があるまでは、Discordへのパネル投稿を行わない。
 - 未確定のゲームルール、賭け金、報酬、残高共有を推測で実装しない。
