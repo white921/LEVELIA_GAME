@@ -1,7 +1,7 @@
 # LEVELIA_GAME
 
-LEVELIA向けのDiscordゲームBot。既存のLEVELIA Botとは独立したリポジトリで管理します。
-CPU対戦・相互選択による2人対戦の指スマを実装しています。賭け金・報酬はありません。
+LEVELIA向けのDiscordゲームBotとブラウザゲーム。既存のLEVELIA Botとは独立したリポジトリで管理します。
+CPU対戦・相互選択による2人対戦の指スマと、Discord Activity化を見据えた1人用ハイアンドローを実装しています。賭け金・報酬はありません。
 
 ## 構成
 
@@ -63,12 +63,38 @@ npm run panel:install
 スラッシュコマンドは使用しないため、コマンド登録は不要です。
 必要権限は View Channel / Send Messages in Threads / Embed Links / Read Message History。スレッドはロックされていない状態にしてください。
 
+## ハイアンドロー（ブラウザ版）
+
+`activity/` は既存Botから分離したVite / TypeScriptのWebゲームです。現時点では1人用で、Discord SDK・DB・LIAには接続しません。
+
+```sh
+npm run activity:dev
+```
+
+通常は `http://127.0.0.1:5173` で開けます。ルールと現在の実装範囲は [ハイアンドロー ブラウザ版](docs/high-low.md) を参照してください。
+
+```sh
+npm run activity:test
+npm run activity:build
+PORT=3000 npm run activity:start
+```
+
+本番用サーバーは `activity-dist/` を配信し、`0.0.0.0:$PORT` で待ち受ける。`PORT` の既定値は `3000`。Railwayのヘルスチェックには `/health` を指定できる。
+
 ## Railway
 
-1. このリポジトリを接続し、常駐Workerとしてサービスを作成します。
-2. `DISCORD_TOKEN`・`GUILD_ID` とDB接続設定をRailway Variablesに設定します。ローカルの `.env` はアップロードされません。
-3. `railway.json` のビルド・pre-deployマイグレーション・起動コマンドを使用します。HTTP公開ドメインやHTTPヘルスチェックは不要です。
-4. Deploy Logsで `MySQL connection verified` と `LEVELIA_GAME ready` を確認します。
+同じGitHubリポジトリから、Bot WorkerとActivity Webを別サービスとして作成する。
+
+| サービス | Build Command | Pre-deploy Command | Start Command | Public Domain |
+| --- | --- | --- | --- | --- |
+| Bot Worker | `npm ci && npm run build` | `npm run migrate` | `npm start` | 不要 |
+| Activity Web | `npm ci && npm run activity:build` | なし | `npm run activity:start` | 必要 |
+
+Bot Workerでは `DISCORD_TOKEN`・`GUILD_ID` とDB接続設定をRailway Variablesに設定する。`railway.json` はBot Worker用であり、Activity Webには適用せず、上表のコマンドをサービス設定へ指定する。
+
+Activity WebではVariable `PORT=3000` を設定し、Public NetworkingのTarget Portにも `3000` を指定する。Healthcheck Pathは `/health`。発行された `*.up.railway.app` のホスト名を、Discord Developer PortalのActivities → URL MappingsでPrefix `/` に割り当てる。
+
+Bot WorkerのDeploy Logsでは `MySQL connection verified` と `LEVELIA_GAME ready`、Activity Webでは `LEVELIA_GAME Activity listening on 0.0.0.0:3000` を確認する。
 
 Workerは1レプリカで運用してください。使用するテーブルは `levelia_game_rooms` です。マイグレーションは再実行可能で、既存Botのテーブルを変更しません。
 ゲーム開始・入力・期限切れ・降参を同じ部屋の行ロックで直列化します。終了した対戦は直近50件を保持し、入力期限は2分・相互選択待ちは5分です。

@@ -9,12 +9,17 @@
   },
   "scripts": {
     "build": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\" && tsc -p tsconfig.json",
-    "check": "tsc -p tsconfig.json --noEmit",
+    "check": "tsc -p tsconfig.json --noEmit && npm run activity:check",
     "start": "node dist/index.js",
     "dev": "tsx watch src/index.ts",
-    "test": "npm run build && node --test test/*.test.js",
+    "test": "npm run build && node --test test/*.test.js && npm run activity:test",
     "migrate": "node dist/migrate.js",
-    "panel:install": "node dist/installPanel.js"
+    "panel:install": "node dist/installPanel.js",
+    "activity:dev": "vite --config activity/vite.config.ts",
+    "activity:build": "vite build --config activity/vite.config.ts",
+    "activity:start": "node activity/server.mjs",
+    "activity:check": "tsc -p activity/tsconfig.json --noEmit",
+    "activity:test": "tsx --test activity/test/*.test.ts"
   },
   "dependencies": {
     "discord.js": "^14.27.0",
@@ -24,6 +29,7 @@
   "devDependencies": {
     "@types/node": "^22.20.4",
     "tsx": "^4.23.15",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "vite": "^7.1.7"
   }
 }
