@@ -33,7 +33,5 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     throw new Error('GUILD_ID must be a Discord server ID (17-20 digits)');
   }
 
-  const balanceMode = env.BALANCE_MODE?.trim() || 'unavailable';
-  if (balanceMode !== 'lia' && balanceMode !== 'unavailable') throw new Error('BALANCE_MODE must be lia or unavailable');
-  return { discordToken, mysqlUrl, guildId, balanceMode };
+  return { discordToken, mysqlUrl, guildId };
 }

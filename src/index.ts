@@ -25,7 +25,7 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds], rest: { timeout
 const scope = { guildId: config.guildId, channelId: YUBISUMA_THREAD_ID };
 const store = new YubisumaStore(database);
 const messages = new YubisumaMessageService(client, store, scope);
-const dependencies = { store, messages, scope, database, balanceMode: config.balanceMode };
+const dependencies = { store, messages, scope, database };
 let stopMaintenance: (() => void) | undefined;
 let stopping = false;
 

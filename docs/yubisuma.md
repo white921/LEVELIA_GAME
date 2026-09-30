@@ -32,8 +32,7 @@
 
 ## 残高確認
 
-既存LIAとの連携判断は保留。既定の `BALANCE_MODE=unavailable` は準備中と表示する。
-`BALANCE_MODE=lia` を明示設定した場合だけ、同じDBの `accounts.wallet` を本人の `user_id` で取得し表示する。口座を作成・更新しない。
+同じDBの `accounts.wallet` を本人の `user_id` で取得し、常に表示する。口座を作成・更新しない。
 
 ## 構成と永続化
 

@@ -26,7 +26,7 @@ export async function handleYubisumaInteraction(interaction: Interaction, deps: 
         await interaction.editReply(rulesPanel());
         break;
       case 'balance':
-        await interaction.editReply({ content: await balanceMessage(deps.database, userId, deps.balanceMode), components: [] });
+        await interaction.editReply({ content: await balanceMessage(deps.database, userId), components: [] });
         break;
       case 'pair':
         await interaction.editReply(opponentPanel());

@@ -113,7 +113,6 @@ test('Railway split MySQL variables preserve special characters and require GUIL
   assert.equal(decodeURIComponent(url.username), env.MYSQLUSER);
   assert.equal(decodeURIComponent(url.password), env.MYSQLPASSWORD);
   assert.equal(config.guildId, A);
-  assert.equal(config.balanceMode, 'unavailable');
   assert.throws(() => loadConfig({ ...env, GUILD_ID: '' }), /GUILD_ID/);
   assert.throws(() => loadConfig({ ...env, MYSQLPORT: 'NaN' }), /MYSQLPORT/);
 });

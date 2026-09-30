@@ -15,7 +15,14 @@ function fixture(id, type = 'button') {
     async editReply(message) { events.push('reply'); this.lastReply = message; },
   };
   const deps = {
-    scope, balanceMode: 'unavailable', database: {},
+    scope,
+    database: {
+      async execute() {
+        events.push('balance-db');
+        assert.equal(events[0], 'defer');
+        return [[{ wallet: 1234 }], []];
+      },
+    },
     store: { async transact(_scope, fn) { events.push('db'); assert.equal(events[0], 'defer'); return fn(room, Date.now()); } },
     messages: { async sync() { events.push('publish'); assert.equal(events[0], 'defer'); } },
   };
@@ -29,6 +36,12 @@ test('every initial button acknowledges privately and CPU commits before publish
     assert.ok(f.events.includes('reply'));
     if (id === 'ys:cpu') assert.deepEqual(f.events, ['defer', 'db', 'reply', 'publish']);
   }
+});
+test('balance always reads the linked LIA account after acknowledging', async () => {
+  const f = fixture('ys:balance');
+  await handleYubisumaInteraction(f.interaction, f.deps);
+  assert.deepEqual(f.events, ['defer', 'balance-db', 'reply']);
+  assert.match(f.interaction.lastReply.content, /1,234 LIA/);
 });
 test('wrong guild or channel is rejected before DB access', async () => {
   for (const key of ['guildId', 'channelId']) {

@@ -8,5 +8,4 @@ export interface YubisumaDependencies {
   messages: Pick<YubisumaMessageService, 'sync'>;
   scope: Scope;
   database: Pool;
-  balanceMode: 'lia' | 'unavailable';
 }

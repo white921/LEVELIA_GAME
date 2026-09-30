@@ -34,7 +34,6 @@ npm run build
 | `MYSQL_URL` | 接続先DB名を含む `mysql://` 接続URL |
 | `MYSQLHOST` / `MYSQLPORT` / `MYSQLUSER` / `MYSQLPASSWORD` / `MYSQL_DATABASE` | `MYSQL_URL` を使わない場合の接続設定。Railwayの個別変数形式に対応 |
 | `GUILD_ID` | 対象のDiscordサーバーID。Railwayの環境変数で指定 |
-| `BALANCE_MODE` | `unavailable`（既定）または `lia`。後者は同じDBの `accounts.wallet` を読み取り専用で表示 |
 
 トークン、GUILD_ID、どちらかのDB接続設定が必須です。`GUILD_ID` はコードに固定せず文字列で扱います。ローカル開発では `.env` に設定してください。
 
@@ -90,7 +89,7 @@ PORT=3000 npm run activity:start
 | Bot Worker | `npm ci && npm run build` | `npm run migrate` | `npm start` | 不要 |
 | Activity Web | `npm ci && npm run activity:build` | なし | `npm run activity:start` | 必要 |
 
-Bot Workerでは `DISCORD_TOKEN`・`GUILD_ID` とDB接続設定をRailway Variablesに設定する。`railway.json` はBot Worker用であり、Activity Webには適用せず、上表のコマンドをサービス設定へ指定する。
+Bot Workerでは `DISCORD_TOKEN`・`GUILD_ID` とDB接続設定をRailway Variablesに設定する。残高確認は同じDBの `accounts.wallet` を常に読み取り専用で参照する。Build・Pre-deploy・Start Commandは、共有設定ファイルではなく上表のとおり各サービスへ個別に設定する。
 
 Activity WebではVariable `PORT=3000` を設定し、Public NetworkingのTarget Portにも `3000` を指定する。Healthcheck Pathは `/health`。発行された `*.up.railway.app` のホスト名を、Discord Developer PortalのActivities → URL MappingsでPrefix `/` に割り当てる。
 
