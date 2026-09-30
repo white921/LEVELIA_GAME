@@ -11,7 +11,9 @@
 - 同じ数字は引き分けとし、正解数と連勝数は変化しない。
 - 正解で正解数と連勝数を1増やし、不正解で連勝数だけ0に戻す。
 - 山札がなくなると終了する。最高連勝だけブラウザのローカルストレージに保存する。
-- 賭け金、報酬、LIA、アカウント、DB、マルチプレイ、Discord Embedded App SDKは未接続。
+- Discord Activity内ではEmbedded App SDKの `identify` scopeで本人を認証する。
+- 連携済みDiscord IDに対応する `accounts.wallet` をActivityサーバーから読み取り専用で表示する。口座の作成・更新は行わない。
+- 賭け金、報酬、マルチプレイは未実装。
 
 ## 起動
 
@@ -30,6 +32,8 @@ npm run activity:build
 PORT=3000 npm run activity:start
 ```
 
-`activity-dist/` に静的ファイルが生成される。Discord Activity化する際は、HTTPSで配信するフロントエンドとしてこの成果物を使用し、Discord認証・ゲーム状態・乱数の最終決定はサーバー側へ移す。
+`activity-dist/` に静的ファイルが生成される。通常ブラウザではゲームをプレビューできるが、Discord認証と残高表示はDiscord Activity内でのみ動作する。
 
 RailwayではActivity WebサービスのBuild Commandを `npm ci && npm run activity:build`、Start Commandを `npm run activity:start` とする。VariableとPublic NetworkingのTarget Portをともに `3000`、Healthcheck Pathを `/health` に設定する。
+
+Activity WebのVariableには `DISCORD_CLIENT_ID`、`DISCORD_CLIENT_SECRET`、`MYSQL_URL` も設定する。Client SecretとMySQL接続情報はサーバー内だけで使用し、Viteの公開環境変数にはしない。Bot用の `DISCORD_TOKEN` は不要。

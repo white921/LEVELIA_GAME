@@ -3,11 +3,13 @@ import { access, stat } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { extname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createActivityApi } from './server/activityApi.mjs';
 
 const activityDirectory = fileURLToPath(new URL('.', import.meta.url));
 const defaultRoot = resolve(activityDirectory, '../activity-dist');
 const documentRoot = resolve(process.env.ACTIVITY_DIST_DIR ?? defaultRoot);
 const indexPath = resolve(documentRoot, 'index.html');
+const activityApi = createActivityApi();
 
 const mimeTypes = new Map([
   ['.css', 'text/css; charset=utf-8'],
@@ -41,7 +43,7 @@ function isInsideDocumentRoot(filePath) {
   return filePath === documentRoot || filePath.startsWith(`${documentRoot}${sep}`);
 }
 
-async function resolveFile(pathname) {
+async function resolveFile(pathname, acceptsHtml) {
   let decodedPath;
   try {
     decodedPath = decodeURIComponent(pathname);
@@ -72,9 +74,9 @@ async function resolveFile(pathname) {
     }
   }
 
-  // Discord Activities are single-page applications. Unknown browser routes
-  // should load the Activity shell instead of returning Railway's 404 page.
-  return indexPath;
+  // Only browser navigations receive the SPA shell. Missing assets must remain
+  // 404s so MIME/type errors are not hidden behind index.html.
+  return acceptsHtml && extname(pathname) === '' ? indexPath : undefined;
 }
 
 function writeText(response, statusCode, body) {
@@ -102,15 +104,22 @@ const server = createServer(async (request, response) => {
       return;
     }
 
+    if (await activityApi.handle(request, response, url)) return;
+
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       response.setHeader('Allow', 'GET, HEAD');
       writeText(response, 405, 'Method Not Allowed');
       return;
     }
 
-    const filePath = await resolveFile(url.pathname);
+    const acceptsHtml = (request.headers.accept ?? '').includes('text/html');
+    const filePath = await resolveFile(url.pathname, acceptsHtml);
     if (filePath === null) {
       writeText(response, 400, 'Bad Request');
+      return;
+    }
+    if (filePath === undefined) {
+      writeText(response, 404, 'Not Found');
       return;
     }
 
@@ -145,8 +154,14 @@ server.listen(port, '0.0.0.0', () => {
   console.log(`LEVELIA_GAME Activity listening on 0.0.0.0:${port}`);
 });
 
-function shutdown(signal) {
+async function shutdown(signal) {
   console.log(`${signal} received; closing Activity server`);
+  try {
+    await activityApi.close();
+  } catch (error) {
+    console.error('Activity database shutdown failed', error);
+    process.exitCode = 1;
+  }
   server.close(error => {
     if (error) {
       console.error('Activity server shutdown failed', error);
@@ -155,5 +170,5 @@ function shutdown(signal) {
   });
 }
 
-process.once('SIGINT', () => shutdown('SIGINT'));
-process.once('SIGTERM', () => shutdown('SIGTERM'));
+process.once('SIGINT', () => void shutdown('SIGINT'));
+process.once('SIGTERM', () => void shutdown('SIGTERM'));

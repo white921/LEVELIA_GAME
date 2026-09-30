@@ -64,7 +64,7 @@ npm run panel:install
 
 ## ハイアンドロー（ブラウザ版）
 
-`activity/` は既存Botから分離したVite / TypeScriptのWebゲームです。現時点では1人用で、Discord SDK・DB・LIAには接続しません。
+`activity/` は既存Botから分離したVite / TypeScriptのWebゲームです。Discord Activity内ではEmbedded App SDKで本人を認証し、Activityサーバーが同じDBの `accounts.wallet` を読み取り専用で参照します。ブラウザへDB接続情報やDiscord Client Secretは渡しません。
 
 ```sh
 npm run activity:dev
@@ -92,6 +92,16 @@ PORT=3000 npm run activity:start
 Bot Workerでは `DISCORD_TOKEN`・`GUILD_ID` とDB接続設定をRailway Variablesに設定する。残高確認は同じDBの `accounts.wallet` を常に読み取り専用で参照する。Build・Pre-deploy・Start Commandは、共有設定ファイルではなく上表のとおり各サービスへ個別に設定する。
 
 Activity WebではVariable `PORT=3000` を設定し、Public NetworkingのTarget Portにも `3000` を指定する。Healthcheck Pathは `/health`。発行された `*.up.railway.app` のホスト名を、Discord Developer PortalのActivities → URL MappingsでPrefix `/` に割り当てる。
+
+Activity Webには次のVariableも設定する。Botの `DISCORD_TOKEN` はActivityへ設定しない。
+
+| 変数 | 内容 |
+| --- | --- |
+| `DISCORD_CLIENT_ID` | Developer PortalのApplication ID（公開情報） |
+| `DISCORD_CLIENT_SECRET` | OAuth2ページのClient Secret（Activityサーバーだけで使用） |
+| `MYSQL_URL` | Railway MySQLサービスの接続URL参照。`accounts.wallet`の読み取りに使用 |
+
+Activityは `identify` scopeだけを要求する。ブラウザから渡されたユーザーIDは信用せず、残高取得のたびにBearer tokenをDiscord APIの `/users/@me` で検証して得たIDを使う。
 
 Bot WorkerのDeploy Logsでは `MySQL connection verified` と `LEVELIA_GAME ready`、Activity Webでは `LEVELIA_GAME Activity listening on 0.0.0.0:3000` を確認する。
 

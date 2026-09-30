@@ -1,4 +1,5 @@
 import './styles.css';
+import { initAccountPanel } from './accountPanel.js';
 import { createDeck, resolveGuess, shuffleDeck } from './game.js';
 import type { Guess, GuessResult, PlayingCard, Suit } from './game.js';
 
@@ -219,4 +220,5 @@ window.addEventListener('keydown', event => {
 });
 
 bestCount.textContent = String(best);
+initAccountPanel();
 void startGame();

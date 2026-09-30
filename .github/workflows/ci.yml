@@ -32,3 +32,4 @@ jobs:
         env:
           TEST_MYSQL_PORT: 3306
           TEST_MYSQL_PASSWORD: test
+      - run: npm run activity:build

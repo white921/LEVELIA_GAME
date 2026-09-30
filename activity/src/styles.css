@@ -33,6 +33,7 @@ html {
 body {
   min-width: 320px;
   min-height: 100vh;
+  min-height: 100dvh;
   margin: 0;
   background:
     radial-gradient(circle at 14% 0%, rgba(196, 155, 82, .12), transparent 30%),
@@ -52,6 +53,7 @@ a:focus-visible {
 #app {
   width: min(100%, 1120px);
   min-height: 100vh;
+  min-height: 100dvh;
   margin: 0 auto;
   padding: 0 28px 48px;
 }
@@ -62,6 +64,12 @@ a:focus-visible {
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid var(--line);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .brand {
@@ -139,6 +147,106 @@ a:focus-visible {
   color: #765624;
   background: #fffdf8;
 }
+
+.account-panel {
+  min-height: 66px;
+  margin-top: 14px;
+  padding: 11px 13px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 15px;
+  border: 1px solid rgba(91, 95, 86, .14);
+  border-radius: 16px;
+  background: rgba(255, 254, 251, .76);
+  box-shadow: 0 8px 24px rgba(69, 64, 51, .06);
+  backdrop-filter: blur(10px);
+}
+
+.account-identity {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.account-avatar {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 2px solid rgba(169, 121, 47, .22);
+  border-radius: 50%;
+  color: var(--forest);
+  background: #edf1eb;
+  font-family: 'Avenir Next', Inter, sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.account-avatar img {
+  width: 100%;
+  height: 100%;
+  display: none;
+  object-fit: cover;
+}
+
+.account-avatar.has-image img { display: block; }
+.account-avatar.has-image span { display: none; }
+
+.account-copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.account-copy strong,
+.account-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-copy strong { color: var(--ink); font-size: 13px; }
+.account-copy small { color: var(--muted); font-size: 10px; }
+
+.balance-display {
+  display: grid;
+  justify-items: end;
+  gap: 1px;
+}
+
+.balance-display span {
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .13em;
+}
+
+.balance-display strong {
+  color: var(--forest);
+  font-family: 'Avenir Next', Inter, sans-serif;
+  font-size: 15px;
+  white-space: nowrap;
+}
+
+.balance-refresh {
+  min-width: 50px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--ink-soft);
+  background: #fffdf8;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.balance-refresh:disabled { cursor: wait; opacity: .5; }
+.account-panel.is-error { border-color: rgba(170, 63, 74, .22); }
+.account-panel.is-standalone .account-avatar { opacity: .7; }
 
 .hero {
   position: relative;
@@ -440,7 +548,7 @@ h1 span:last-child { color: var(--forest); }
   gap: 13px;
   transform: translateY(-50%);
   color: #87918b;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: .12em;
 }
@@ -488,7 +596,7 @@ h1 span:last-child { color: var(--forest); }
 
 .result-kicker {
   color: #8b928d;
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 800;
   letter-spacing: .18em;
 }
@@ -497,7 +605,7 @@ h1 span:last-child { color: var(--forest); }
   margin-top: 3px;
   color: var(--ink);
   font-family: 'Avenir Next', Inter, sans-serif;
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .result-banner.is-positive strong { color: #35634c; }
@@ -665,6 +773,9 @@ kbd {
 
 @media (max-width: 720px) {
   #app { padding: 0 16px 32px; }
+  html.is-discord-activity #app {
+    padding-top: max(72px, env(safe-area-inset-top));
+  }
   .hero { padding: 34px 0 23px; }
   .hero::before,
   .hero::after { display: none; }
@@ -680,14 +791,37 @@ kbd {
   .site-header { min-height: 67px; }
   .brand-mark { width: 32px; height: 36px; }
   .brand-subtitle { letter-spacing: .1em; }
+  .account-panel {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 9px 12px;
+  }
+  .account-avatar { width: 38px; height: 38px; }
+  .account-copy strong { font-size: 14px; }
+  .account-copy small { font-size: 11px; }
+  .balance-display { grid-column: 1; justify-items: start; padding-left: 50px; }
+  .balance-display span { font-size: 9px; }
+  .balance-display strong { font-size: 18px; }
+  .balance-refresh { grid-column: 2; grid-row: 1 / span 2; }
   .hero-copy { font-size: 13px; }
   .score-item { min-width: 0; flex: 1; padding: 14px 12px; }
   .table { min-height: 330px; }
   .card-stage { width: 124px; height: 176px; }
   .card-center span { font-size: 48px; }
-  .deck-zone { right: 4px; transform: translateY(-50%) scale(.58); }
-  .discard-zone { left: 4px; transform: translateY(-50%) scale(.58); }
-  .result-banner { bottom: 25px; }
+  .deck-zone,
+  .discard-zone {
+    gap: 8px;
+    transform: translateY(-50%);
+    font-size: 12px;
+    letter-spacing: .08em;
+  }
+  .deck-zone { right: 10px; }
+  .discard-zone { left: 10px; }
+  .deck-stack,
+  .discard-outline { width: 48px; height: 68px; }
+  .deck-card { border-width: 3px; border-radius: 7px; }
+  .result-banner { bottom: 20px; }
+  .result-kicker { font-size: 11px; }
+  .result-banner strong { font-size: 20px; }
   .decision-buttons { gap: 9px; }
   .guess-button { min-height: 64px; padding-inline: 11px; grid-template-columns: auto 1fr; gap: 9px; }
   .guess-icon { width: 32px; height: 32px; }
