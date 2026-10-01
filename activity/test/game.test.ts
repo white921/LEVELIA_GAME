@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { compareCards, createDeck, resolveGuess, shuffleDeck } from '../src/game.js';
+import {
+  chooseFateShiftReplacement,
+  compareCards,
+  createDeck,
+  resolveGuess,
+  shuffleDeck,
+} from '../src/game.js';
 
 test('creates a unique 52-card deck with ace high', () => {
   const deck = createDeck();
@@ -35,4 +41,29 @@ test('treats equal ranks as a draw for either guess', () => {
   const second = deck.find(card => card.id === 'diamonds-10')!;
   assert.deepEqual(resolveGuess(first, second, 'higher'), { relation: 'same', correct: null });
   assert.deepEqual(resolveGuess(first, second, 'lower'), { relation: 'same', correct: null });
+});
+
+test('fate shift replaces only a missed guess with a card that makes it correct', () => {
+  const deck = createDeck();
+  const seven = deck.find(card => card.id === 'clubs-7')!;
+  const three = deck.find(card => card.id === 'hearts-3')!;
+  const candidates = [
+    deck.find(card => card.id === 'diamonds-4')!,
+    deck.find(card => card.id === 'spades-Q')!,
+  ];
+
+  const replacement = chooseFateShiftReplacement(seven, three, candidates, 'higher', () => .99);
+  assert.deepEqual(replacement, { card: candidates[1], index: 1 });
+  assert.equal(resolveGuess(seven, replacement!.card, 'higher').correct, true);
+});
+
+test('fate shift does not activate for a correct or drawn result', () => {
+  const deck = createDeck();
+  const seven = deck.find(card => card.id === 'clubs-7')!;
+  const nine = deck.find(card => card.id === 'hearts-9')!;
+  const otherSeven = deck.find(card => card.id === 'diamonds-7')!;
+  const candidates = [deck.find(card => card.id === 'spades-Q')!];
+
+  assert.equal(chooseFateShiftReplacement(seven, nine, candidates, 'higher'), null);
+  assert.equal(chooseFateShiftReplacement(seven, otherSeven, candidates, 'higher'), null);
 });

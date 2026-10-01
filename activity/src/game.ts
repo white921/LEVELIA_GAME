@@ -31,6 +31,13 @@ export interface GuessResult {
   readonly correct: boolean | null;
 }
 
+export interface FateShiftReplacement {
+  readonly card: PlayingCard;
+  readonly index: number;
+}
+
+export const FATE_SHIFT_CHANCE = 1 / 1000;
+
 export function createDeck(): PlayingCard[] {
   return SUITS.flatMap(suit => RANKS.map(({ label, value }) => ({
     suit,
@@ -59,4 +66,26 @@ export function compareCards(current: PlayingCard, next: PlayingCard): Relation 
 export function resolveGuess(current: PlayingCard, next: PlayingCard, guess: Guess): GuessResult {
   const relation = compareCards(current, next);
   return { relation, correct: relation === 'same' ? null : relation === guess };
+}
+
+export function chooseFateShiftReplacement(
+  current: PlayingCard,
+  revealed: PlayingCard,
+  remainingCards: readonly PlayingCard[],
+  guess: Guess,
+  random: () => number = Math.random,
+): FateShiftReplacement | null {
+  if (resolveGuess(current, revealed, guess).correct !== false) return null;
+
+  const candidates = remainingCards
+    .map((card, index) => ({ card, index }))
+    .filter(({ card }) => resolveGuess(current, card, guess).correct === true);
+
+  if (candidates.length === 0) return null;
+
+  const sample = random();
+  if (!Number.isFinite(sample) || sample < 0 || sample >= 1) {
+    throw new RangeError('random must return a value from 0 up to, but not including, 1');
+  }
+  return candidates[Math.floor(sample * candidates.length)]!;
 }

@@ -1,6 +1,12 @@
 import './styles.css';
 import { initAccountPanel } from './accountPanel.js';
-import { createDeck, resolveGuess, shuffleDeck } from './game.js';
+import {
+  chooseFateShiftReplacement,
+  createDeck,
+  FATE_SHIFT_CHANCE,
+  resolveGuess,
+  shuffleDeck,
+} from './game.js';
 import type { Guess, GuessResult, PlayingCard, Suit } from './game.js';
 import { navigateTo, routeFromHash } from './navigation.js';
 import type { ActivityRoute } from './navigation.js';
@@ -18,6 +24,15 @@ const guessRevealTiming = {
   suspense: 850,
   cardFlip: 600,
 } as const;
+
+const fateShiftTiming = {
+  falseResult: 720,
+  awakening: 900,
+  erase: 320,
+  restore: 720,
+} as const;
+
+const fateDemoRequested = new URLSearchParams(window.location.search).get('fate-demo') === '1';
 
 const stage = requiredElement<HTMLDivElement>('card-stage');
 const highButton = requiredElement<HTMLButtonElement>('guess-high');
@@ -48,6 +63,7 @@ let best = readBest();
 let locked = true;
 let gameGeneration = 0;
 let currentRoute: ActivityRoute = 'lobby';
+let fateDemoPending = fateDemoRequested;
 
 function requiredElement<T extends HTMLElement>(id: string): T {
   const element = document.getElementById(id);
@@ -89,12 +105,25 @@ function createCardElement(card: PlayingCard, faceUp: boolean): HTMLDivElement {
         <div class="back-pattern"><span>L</span></div>
       </div>
       <div class="card-face card-front">
-        <div class="corner corner-top"><b>${card.rank}</b><span>${symbol}</span></div>
-        <div class="card-center"><span>${symbol}</span><b>${card.rank}</b></div>
-        <div class="corner corner-bottom"><b>${card.rank}</b><span>${symbol}</span></div>
+        <div class="corner corner-top"><b data-card-rank>${card.rank}</b><span data-card-suit>${symbol}</span></div>
+        <div class="card-center"><span data-card-suit>${symbol}</span><b data-card-rank>${card.rank}</b></div>
+        <div class="corner corner-bottom"><b data-card-rank>${card.rank}</b><span data-card-suit>${symbol}</span></div>
       </div>
     </div>`;
   return cardElement;
+}
+
+function updateCardFace(cardElement: HTMLDivElement, card: PlayingCard): void {
+  const symbol = suitSymbols[card.suit];
+  const red = card.suit === 'hearts' || card.suit === 'diamonds';
+  cardElement.classList.toggle('is-red', red);
+  cardElement.setAttribute('aria-label', `${card.rank}${symbol}`);
+  cardElement.querySelectorAll<HTMLElement>('[data-card-rank]').forEach(element => {
+    element.textContent = card.rank;
+  });
+  cardElement.querySelectorAll<HTMLElement>('[data-card-suit]').forEach(element => {
+    element.textContent = symbol;
+  });
 }
 
 function updateScoreboard(): void {
@@ -154,9 +183,22 @@ async function makeGuess(guess: Guess): Promise<void> {
   decisionPrompt.textContent = '次のカードを引いています…';
   resultBanner.className = 'result-banner is-hidden';
 
-  const next = deck.pop();
+  let next = deck.pop();
   if (!next) return;
-  const result = resolveGuess(previous, next, guess);
+  let result = resolveGuess(previous, next, guess);
+  let fateShifted = false;
+  const fateShiftSelected = result.correct === false
+    && (fateDemoPending || Math.random() < FATE_SHIFT_CHANCE);
+  const fateReplacement = fateShiftSelected
+    ? chooseFateShiftReplacement(previous, next, deck, guess)
+    : null;
+
+  if (fateReplacement) {
+    deck[fateReplacement.index] = next;
+    fateDemoPending = false;
+    fateShifted = true;
+  }
+
   const incoming = createCardElement(next, false);
   incoming.classList.add('from-deck');
   stage.append(incoming);
@@ -173,6 +215,38 @@ async function makeGuess(guess: Guess): Promise<void> {
   incoming.classList.add('is-face-up');
   await wait(guessRevealTiming.cardFlip);
   if (generation !== gameGeneration) return;
+
+  if (fateReplacement) {
+    const falsePresentation = describeResult(result, guess);
+    resultBanner.className = 'result-banner is-negative';
+    resultBanner.querySelector('.result-kicker')!.textContent = falsePresentation.kicker;
+    resultMessage.textContent = falsePresentation.message;
+    decisionPrompt.textContent = '……';
+    await wait(fateShiftTiming.falseResult);
+    if (generation !== gameGeneration) return;
+
+    stage.classList.add('is-fate-active');
+    incoming.classList.add('is-fate-awakening');
+    resultBanner.className = 'result-banner is-fate';
+    resultBanner.querySelector('.result-kicker')!.textContent = 'FATE INTERVENES';
+    resultMessage.textContent = '運命が揺らいでいる';
+    decisionPrompt.textContent = 'カードに何かが起きています…';
+    await wait(fateShiftTiming.awakening);
+    if (generation !== gameGeneration) return;
+
+    incoming.classList.add('is-fate-erasing');
+    await wait(fateShiftTiming.erase);
+    if (generation !== gameGeneration) return;
+    next = fateReplacement.card;
+    updateCardFace(incoming, next);
+    result = resolveGuess(previous, next, guess);
+    incoming.classList.remove('is-fate-erasing');
+    incoming.classList.add('is-fate-restoring');
+    await wait(fateShiftTiming.restore);
+    if (generation !== gameGeneration) return;
+    incoming.classList.remove('is-fate-awakening', 'is-fate-restoring');
+    stage.classList.remove('is-fate-active');
+  }
 
   currentElement.remove();
   incoming.classList.remove('from-deck', 'is-dealt');
@@ -192,9 +266,15 @@ async function makeGuess(guess: Guess): Promise<void> {
   }
 
   const presentation = describeResult(result, guess);
-  resultBanner.className = `result-banner is-${presentation.tone}`;
-  resultBanner.querySelector('.result-kicker')!.textContent = presentation.kicker;
-  resultMessage.textContent = presentation.message;
+  resultBanner.className = fateShifted
+    ? 'result-banner is-fate-complete'
+    : `result-banner is-${presentation.tone}`;
+  resultBanner.querySelector('.result-kicker')!.textContent = fateShifted
+    ? 'FATE REWRITTEN'
+    : presentation.kicker;
+  resultMessage.textContent = fateShifted
+    ? `運命改変・${presentation.message}`
+    : presentation.message;
   updateScoreboard();
 
   if (deck.length === 0) {
@@ -216,6 +296,7 @@ async function makeGuess(guess: Guess): Promise<void> {
 async function startGame(): Promise<void> {
   const generation = ++gameGeneration;
   setControlsEnabled(false);
+  stage.classList.remove('is-fate-active');
   deck = shuffleDeck(createDeck());
   const first = deck.pop();
   if (!first) throw new Error('The deck is empty');
