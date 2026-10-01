@@ -20,6 +20,7 @@ const selectHighLowButton = requiredElement<HTMLButtonElement>('select-high-low'
 const lobbyButton = requiredElement<HTMLButtonElement>('lobby-button');
 const rulesButton = requiredElement<HTMLButtonElement>('rules-button');
 const rulesDialog = requiredElement<HTMLDialogElement>('rules-dialog');
+const lobbyHeadingView = requiredElement<HTMLElement>('lobby-heading-view');
 const lobbyView = requiredElement<HTMLElement>('lobby-view');
 const gameView = requiredElement<HTMLElement>('game-view');
 const resultBanner = requiredElement<HTMLDivElement>('result-banner');
@@ -229,6 +230,7 @@ async function startGame(): Promise<void> {
 function renderRoute(route: ActivityRoute): void {
   currentRoute = route;
   const playingHighLow = route === 'high-low';
+  lobbyHeadingView.hidden = playingHighLow;
   lobbyView.hidden = playingHighLow;
   gameView.hidden = !playingHighLow;
   lobbyButton.hidden = !playingHighLow;
