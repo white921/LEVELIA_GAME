@@ -1,9 +1,10 @@
 import {
   connectDiscordActivity,
+  DiscordActivityConnectionError,
   fetchBalance,
   isDiscordActivityContext,
 } from './discordActivity.js';
-import type { DiscordActivitySession } from './discordActivity.js';
+import type { DiscordActivitySession, DiscordConnectionStage } from './discordActivity.js';
 
 interface AccountElements {
   panel: HTMLElement;
@@ -54,6 +55,22 @@ function renderUser(ui: AccountElements, session: DiscordActivitySession): void 
   }
 }
 
+const stageMessages: Record<DiscordConnectionStage, string> = {
+  config: '1/5 サーバー設定を確認中',
+  ready: '2/5 Discordアプリへ接続中',
+  authorize: '3/5 アカウントの利用許可を確認中',
+  token: '4/5 認証コードを安全に交換中',
+  authenticate: '5/5 Discordアカウントを確定中',
+};
+
+const stageNames: Record<DiscordConnectionStage, string> = {
+  config: 'サーバー設定',
+  ready: 'SDK接続',
+  authorize: '利用許可',
+  token: 'コード交換',
+  authenticate: 'アカウント確定',
+};
+
 async function updateBalance(ui: AccountElements, session: DiscordActivitySession): Promise<void> {
   ui.refresh.disabled = true;
   ui.balance.textContent = '確認中…';
@@ -97,18 +114,23 @@ export function initAccountPanel(): void {
     ui.status.textContent = 'アカウントを確認しています';
     ui.balance.textContent = '— LIA';
     try {
-      session = await connectDiscordActivity();
+      session = await connectDiscordActivity(stage => {
+        ui.status.textContent = stageMessages[stage];
+      });
       ui.panel.classList.add('is-connected');
       renderUser(ui, session);
       await updateBalance(ui, session);
     } catch (error) {
       console.error('Discord Activity connection failed', error);
       ui.panel.classList.add('is-error');
-      const configurationPending = error instanceof Error && error.message === 'DISCORD_AUTH_NOT_CONFIGURED';
-      ui.name.textContent = configurationPending ? '残高連携の設定待ち' : 'Discord連携に失敗しました';
+      const connectionError = error instanceof DiscordActivityConnectionError ? error : null;
+      const configurationPending = connectionError?.message === 'DISCORD_AUTH_NOT_CONFIGURED';
+      ui.name.textContent = configurationPending
+        ? '残高連携の設定待ち'
+        : `Discord認証：${connectionError ? stageNames[connectionError.stage] : '不明'}で停止`;
       ui.status.textContent = configurationPending
         ? 'ゲームはそのまま遊べます'
-        : 'しばらくしてから再試行してください';
+        : '再試行しても続く場合は、この表示を管理者へ伝えてください';
       ui.balance.textContent = '— LIA';
       ui.refresh.textContent = '再試行';
       ui.refresh.disabled = false;
