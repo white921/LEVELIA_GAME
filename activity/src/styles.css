@@ -351,14 +351,16 @@ a:focus-visible {
 .game-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
   gap: 16px;
 }
 
 .game-tile {
-  aspect-ratio: 1.65 / 1;
   min-width: 0;
+  min-height: 220px;
   padding: 22px 22px 20px 34px;
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   position: relative;
   overflow: hidden;
   isolation: isolate;
@@ -458,6 +460,7 @@ button.game-tile:active { transform: translateY(-1px); }
 .game-tile-featured .game-mode { color: rgba(248, 238, 211, .68); }
 
 .game-tile-copy {
+  min-width: 0;
   align-self: end;
   display: grid;
   position: relative;
@@ -498,6 +501,7 @@ button.game-tile:active { transform: translateY(-1px); }
 .game-tile-featured .game-tile-copy > span { color: rgba(255,250,240,.74); }
 
 .game-tile-footer {
+  min-width: 0;
   align-self: end;
   margin-top: 20px;
   padding-top: 14px;
@@ -506,6 +510,8 @@ button.game-tile:active { transform: translateY(-1px); }
   font-size: 10px;
   font-weight: 700;
 }
+
+.game-tile-footer > span { white-space: nowrap; }
 
 .game-tile-footer b { color: var(--forest); font-size: 14px; }
 .game-enter { color: var(--forest); font-size: 12px; }
@@ -1061,6 +1067,11 @@ kbd {
 
 .dialog-action:hover { background: #345443; }
 
+@media (max-width: 960px) {
+  .game-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .game-tile { min-height: 205px; }
+}
+
 @media (max-width: 720px) {
   body {
     background-position: center, 52% top;
@@ -1074,6 +1085,7 @@ kbd {
   .lobby-view { padding-top: 0; }
   .lobby-hero { min-height: 180px; padding: 28px; }
   .game-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .game-tile { min-height: 185px; }
   .hero { padding: 34px 0 23px; }
   .hero::before,
   .hero::after { display: none; }
@@ -1117,7 +1129,6 @@ kbd {
     min-height: 132px;
     padding: 13px 12px 12px 25px;
     border-radius: 5px 12px 12px 5px;
-    aspect-ratio: auto;
   }
   .game-tile::before { width: 11px; }
   .game-tile::after { inset: 6px 6px 6px 16px; border-radius: 2px 7px 7px 2px; }
@@ -1125,9 +1136,9 @@ kbd {
   .game-mode { display: none; }
   .game-status { padding: 4px 6px; font-size: 7px; }
   .game-tile-copy small { margin-bottom: 4px; font-size: 7px; }
-  .game-tile-featured .game-tile-copy strong { font-size: 20px; }
+  .game-tile-featured .game-tile-copy strong { font-size: clamp(16px, 5vw, 20px); }
   .game-tile-copy > span { display: none; }
-  .game-tile-footer { margin-top: 9px; padding-top: 8px; gap: 6px; font-size: 8px; }
+  .game-tile-footer { margin-top: 9px; padding-top: 8px; flex-wrap: wrap; gap: 2px 6px; font-size: 8px; }
   .game-tile-footer b { font-size: 11px; }
   .game-enter { font-size: 9px; }
   .game-tile-locked .game-tile-copy strong { font-size: 19px; }
