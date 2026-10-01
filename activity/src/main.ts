@@ -2,6 +2,8 @@ import './styles.css';
 import { initAccountPanel } from './accountPanel.js';
 import { createDeck, resolveGuess, shuffleDeck } from './game.js';
 import type { Guess, GuessResult, PlayingCard, Suit } from './game.js';
+import { navigateTo, routeFromHash } from './navigation.js';
+import type { ActivityRoute } from './navigation.js';
 
 const suitSymbols: Record<Suit, string> = {
   spades: '♠',
@@ -14,8 +16,12 @@ const stage = requiredElement<HTMLDivElement>('card-stage');
 const highButton = requiredElement<HTMLButtonElement>('guess-high');
 const lowButton = requiredElement<HTMLButtonElement>('guess-low');
 const newGameButton = requiredElement<HTMLButtonElement>('new-game');
+const selectHighLowButton = requiredElement<HTMLButtonElement>('select-high-low');
+const lobbyButton = requiredElement<HTMLButtonElement>('lobby-button');
 const rulesButton = requiredElement<HTMLButtonElement>('rules-button');
 const rulesDialog = requiredElement<HTMLDialogElement>('rules-dialog');
+const lobbyView = requiredElement<HTMLElement>('lobby-view');
+const gameView = requiredElement<HTMLElement>('game-view');
 const resultBanner = requiredElement<HTMLDivElement>('result-banner');
 const resultMessage = requiredElement<HTMLElement>('result-message');
 const decisionPrompt = requiredElement<HTMLElement>('decision-prompt');
@@ -23,6 +29,7 @@ const correctCount = requiredElement<HTMLElement>('correct-count');
 const streakCount = requiredElement<HTMLElement>('streak-count');
 const bestCount = requiredElement<HTMLElement>('best-count');
 const deckCount = requiredElement<HTMLElement>('deck-count');
+const lobbyBestCount = requiredElement<HTMLElement>('lobby-best-count');
 
 let deck: PlayingCard[] = [];
 let current: PlayingCard | undefined;
@@ -31,6 +38,8 @@ let correct = 0;
 let streak = 0;
 let best = readBest();
 let locked = true;
+let gameGeneration = 0;
+let currentRoute: ActivityRoute = 'lobby';
 
 function requiredElement<T extends HTMLElement>(id: string): T {
   const element = document.getElementById(id);
@@ -53,6 +62,11 @@ function saveBest(): void {
   } catch {
     // The game remains playable when storage is blocked.
   }
+}
+
+function updateBestDisplays(): void {
+  bestCount.textContent = String(best);
+  lobbyBestCount.textContent = String(best);
 }
 
 function createCardElement(card: PlayingCard, faceUp: boolean): HTMLDivElement {
@@ -94,16 +108,20 @@ function wait(duration: number): Promise<void> {
   return new Promise(resolve => window.setTimeout(resolve, duration));
 }
 
-async function dealInitialCard(card: PlayingCard): Promise<void> {
+async function dealInitialCard(card: PlayingCard, generation: number): Promise<boolean> {
   currentElement = createCardElement(card, false);
   currentElement.classList.add('from-deck');
   stage.replaceChildren(currentElement);
   await wait(50);
+  if (generation !== gameGeneration) return false;
   currentElement.classList.add('is-dealt');
   await wait(360);
+  if (generation !== gameGeneration) return false;
   currentElement.classList.add('is-face-up');
   await wait(540);
+  if (generation !== gameGeneration) return false;
   currentElement.classList.remove('from-deck', 'is-dealt');
+  return true;
 }
 
 function describeResult(result: GuessResult, guess: Guess): { kicker: string; message: string; tone: string } {
@@ -122,6 +140,7 @@ function describeResult(result: GuessResult, guess: Guess): { kicker: string; me
 
 async function makeGuess(guess: Guess): Promise<void> {
   if (locked || deck.length === 0 || !current) return;
+  const generation = gameGeneration;
   const previous = current;
   setControlsEnabled(false);
   decisionPrompt.textContent = 'カードを確認中…';
@@ -135,11 +154,14 @@ async function makeGuess(guess: Guess): Promise<void> {
   stage.append(incoming);
 
   await wait(40);
+  if (generation !== gameGeneration) return;
   currentElement.classList.add('to-discard');
   incoming.classList.add('is-dealt');
   await wait(390);
+  if (generation !== gameGeneration) return;
   incoming.classList.add('is-face-up');
   await wait(520);
+  if (generation !== gameGeneration) return;
 
   currentElement.remove();
   incoming.classList.remove('from-deck', 'is-dealt');
@@ -152,6 +174,7 @@ async function makeGuess(guess: Guess): Promise<void> {
     if (streak > best) {
       best = streak;
       saveBest();
+      updateBestDisplays();
     }
   } else if (result.correct === false) {
     streak = 0;
@@ -180,6 +203,7 @@ async function makeGuess(guess: Guess): Promise<void> {
 }
 
 async function startGame(): Promise<void> {
+  const generation = ++gameGeneration;
   setControlsEnabled(false);
   deck = shuffleDeck(createDeck());
   const first = deck.pop();
@@ -193,7 +217,7 @@ async function startGame(): Promise<void> {
   resultMessage.textContent = '最初のカード';
   decisionPrompt.textContent = 'カードを配っています…';
   updateScoreboard();
-  await dealInitialCard(first);
+  if (!await dealInitialCard(first, generation)) return;
   decisionPrompt.textContent = current.value === 14
     ? 'Aより低いか、同じ数字が出ます'
     : current.value === 2
@@ -202,13 +226,38 @@ async function startGame(): Promise<void> {
   setControlsEnabled(true);
 }
 
+function renderRoute(route: ActivityRoute): void {
+  currentRoute = route;
+  const playingHighLow = route === 'high-low';
+  lobbyView.hidden = playingHighLow;
+  gameView.hidden = !playingHighLow;
+  lobbyButton.hidden = !playingHighLow;
+  rulesButton.hidden = !playingHighLow;
+
+  if (playingHighLow) {
+    document.title = 'High & Low | LEVELIA GAMES';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    void startGame();
+    return;
+  }
+
+  document.title = 'LEVELIA GAMES';
+  gameGeneration += 1;
+  setControlsEnabled(false);
+  updateBestDisplays();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 highButton.addEventListener('click', () => void makeGuess('higher'));
 lowButton.addEventListener('click', () => void makeGuess('lower'));
 newGameButton.addEventListener('click', () => void startGame());
+selectHighLowButton.addEventListener('click', () => navigateTo('high-low'));
+lobbyButton.addEventListener('click', () => navigateTo('lobby'));
 rulesButton.addEventListener('click', () => rulesDialog.showModal());
+window.addEventListener('hashchange', () => renderRoute(routeFromHash(window.location.hash)));
 
 window.addEventListener('keydown', event => {
-  if (event.repeat || rulesDialog.open) return;
+  if (currentRoute !== 'high-low' || event.repeat || rulesDialog.open) return;
   if (event.key === 'ArrowUp') {
     event.preventDefault();
     void makeGuess('higher');
@@ -219,6 +268,6 @@ window.addEventListener('keydown', event => {
   }
 });
 
-bestCount.textContent = String(best);
+updateBestDisplays();
 initAccountPanel();
-void startGame();
+renderRoute(routeFromHash(window.location.hash));

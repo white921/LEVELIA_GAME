@@ -4,13 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#f7f4ec" />
-    <meta name="description" content="LEVELIA High & Low - ブラウザで遊べる1人用カードゲーム" />
-    <title>LEVELIA High & Low</title>
+    <meta name="description" content="LEVELIA GAMES - 冒険者ギルドのDiscordゲームActivity" />
+    <title>LEVELIA GAMES</title>
   </head>
   <body>
     <div id="app">
       <header class="site-header">
-        <a class="brand" href="./" aria-label="LEVELIA High and Low ホーム">
+        <a class="brand" href="#lobby" aria-label="LEVELIA GAMES ロビー">
           <span class="brand-mark" aria-hidden="true">L</span>
           <span class="brand-copy">
             <span class="brand-name">LEVELIA</span>
@@ -18,7 +18,10 @@
           </span>
         </a>
         <div class="header-actions">
-          <button class="quiet-button" id="rules-button" type="button" aria-haspopup="dialog">
+          <button class="quiet-button lobby-button" id="lobby-button" type="button" hidden>
+            ロビー
+          </button>
+          <button class="quiet-button" id="rules-button" type="button" aria-haspopup="dialog" hidden>
             遊び方
           </button>
         </div>
@@ -43,13 +46,92 @@
       </section>
 
       <main>
-        <section class="hero" aria-labelledby="game-title">
-          <p class="eyebrow">GUILD CARD QUEST · SOLO</p>
-          <h1 id="game-title"><span>HIGH</span><i aria-hidden="true">/</i><span>LOW</span></h1>
-          <p class="hero-copy">次のカードは、いまより上か下か。</p>
+        <section class="view lobby-view" id="lobby-view" aria-labelledby="lobby-title">
+          <div class="lobby-hero">
+            <div class="lobby-heading">
+              <p class="eyebrow">LEVELIA ADVENTURERS' GUILD</p>
+              <h1 class="lobby-title" id="lobby-title">
+                <span>GUILD</span>
+                <strong>LEVELIA GAMES</strong>
+              </h1>
+              <p>冒険の合間に、運と読みを試す遊戯場。</p>
+            </div>
+            <div class="guild-seal" aria-hidden="true">
+              <span>遊</span>
+              <small>LEVELIA</small>
+            </div>
+          </div>
+
+          <div class="lobby-section-heading">
+            <div>
+              <p class="eyebrow">CHOOSE YOUR GAME</p>
+              <h2>遊戯を選ぶ</h2>
+            </div>
+            <p>現在は一人用ゲームを公開中</p>
+          </div>
+
+          <div class="game-grid">
+            <button class="game-tile game-tile-featured" id="select-high-low" type="button">
+              <span class="game-tile-topline">
+                <span class="game-status is-open">PLAYABLE</span>
+                <span class="game-mode">SOLO · CARD</span>
+              </span>
+              <span class="game-emblem high-low-emblem" aria-hidden="true">
+                <span class="emblem-card emblem-card-left">↓</span>
+                <span class="emblem-card emblem-card-center">L</span>
+                <span class="emblem-card emblem-card-right">↑</span>
+              </span>
+              <span class="game-tile-copy">
+                <small>GUILD CARD QUEST</small>
+                <strong>HIGH <i>/</i> LOW</strong>
+                <span>次の一枚を見抜け。</span>
+              </span>
+              <span class="game-tile-footer">
+                <span>最高連勝 <b id="lobby-best-count">0</b></span>
+                <span class="game-enter">遊ぶ <b aria-hidden="true">→</b></span>
+              </span>
+            </button>
+
+            <article class="game-tile game-tile-locked" aria-labelledby="roulette-title">
+              <span class="game-tile-topline">
+                <span class="game-status">COMING SOON</span>
+                <span class="game-mode">TABLE</span>
+              </span>
+              <span class="game-emblem roulette-emblem" aria-hidden="true"><span>◆</span></span>
+              <span class="game-tile-copy">
+                <small>FORTUNE WHEEL</small>
+                <strong id="roulette-title">ROULETTE</strong>
+                <span>運命の輪は、まだ眠っている。</span>
+              </span>
+              <span class="game-tile-footer"><span>準備中</span></span>
+            </article>
+
+            <article class="game-tile game-tile-locked" aria-labelledby="blackjack-title">
+              <span class="game-tile-topline">
+                <span class="game-status">COMING SOON</span>
+                <span class="game-mode">CARD</span>
+              </span>
+              <span class="game-emblem blackjack-emblem" aria-hidden="true"><span>21</span></span>
+              <span class="game-tile-copy">
+                <small>GUILD TABLE GAME</small>
+                <strong id="blackjack-title">BLACKJACK</strong>
+                <span>勝負の卓は、ただいま支度中。</span>
+              </span>
+              <span class="game-tile-footer"><span>準備中</span></span>
+            </article>
+          </div>
+
+          <p class="lobby-note">新しい遊戯は、このギルドホールに追加されます。</p>
         </section>
 
-        <section class="game-shell" aria-label="ハイアンドローゲーム">
+        <section class="view game-view" id="game-view" hidden>
+          <section class="hero" aria-labelledby="game-title">
+            <p class="eyebrow">GUILD CARD QUEST · SOLO</p>
+            <h1 id="game-title"><span>HIGH</span><i aria-hidden="true">/</i><span>LOW</span></h1>
+            <p class="hero-copy">次のカードは、いまより上か下か。</p>
+          </section>
+
+          <section class="game-shell" aria-label="ハイアンドローゲーム">
           <div class="scoreboard" aria-label="ゲーム状況">
             <div class="score-item">
               <span class="score-label">正解</span>
@@ -111,9 +193,10 @@
             </div>
             <button class="new-deck-button" id="new-game" type="button">山札を交換</button>
           </div>
-        </section>
+          </section>
 
-        <p class="rule-note">Aが最も高く、2が最も低い。同じ数字は引き分けです。</p>
+          <p class="rule-note">Aが最も高く、2が最も低い。同じ数字は引き分けです。</p>
+        </section>
       </main>
 
       <dialog class="rules-dialog" id="rules-dialog" aria-labelledby="rules-title">
