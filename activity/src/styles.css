@@ -37,9 +37,8 @@ body {
   min-height: 100dvh;
   margin: 0;
   background:
-    radial-gradient(circle at 14% 0%, rgba(196, 155, 82, .12), transparent 30%),
-    radial-gradient(circle at 90% 18%, rgba(87, 125, 152, .09), transparent 31%),
-    repeating-linear-gradient(112deg, transparent 0 22px, rgba(64, 75, 66, .015) 23px 24px),
+    linear-gradient(180deg, rgba(248, 247, 242, .74), rgba(248, 247, 242, .84)),
+    url('/images/levelia-guild-vista.jpg') center 32% / cover fixed no-repeat,
     #f7f4ec;
 }
 
@@ -1024,6 +1023,10 @@ kbd {
 .dialog-action:hover { background: #345443; }
 
 @media (max-width: 720px) {
+  body {
+    background-position: center, 52% top;
+    background-attachment: scroll, scroll;
+  }
   #app { padding: 0 16px 32px; }
   html.is-discord-activity #app {
     padding-top: max(72px, env(safe-area-inset-top));
