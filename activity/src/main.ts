@@ -12,6 +12,13 @@ const suitSymbols: Record<Suit, string> = {
   clubs: '♣',
 };
 
+const guessRevealTiming = {
+  beforeDeal: 100,
+  cardTravel: 440,
+  suspense: 850,
+  cardFlip: 600,
+} as const;
+
 const stage = requiredElement<HTMLDivElement>('card-stage');
 const highButton = requiredElement<HTMLButtonElement>('guess-high');
 const lowButton = requiredElement<HTMLButtonElement>('guess-low');
@@ -144,7 +151,7 @@ async function makeGuess(guess: Guess): Promise<void> {
   const generation = gameGeneration;
   const previous = current;
   setControlsEnabled(false);
-  decisionPrompt.textContent = 'カードを確認中…';
+  decisionPrompt.textContent = '次のカードを引いています…';
   resultBanner.className = 'result-banner is-hidden';
 
   const next = deck.pop();
@@ -154,14 +161,17 @@ async function makeGuess(guess: Guess): Promise<void> {
   incoming.classList.add('from-deck');
   stage.append(incoming);
 
-  await wait(40);
+  await wait(guessRevealTiming.beforeDeal);
   if (generation !== gameGeneration) return;
   currentElement.classList.add('to-discard');
   incoming.classList.add('is-dealt');
-  await wait(390);
+  await wait(guessRevealTiming.cardTravel);
+  if (generation !== gameGeneration) return;
+  decisionPrompt.textContent = 'カードをめくります…';
+  await wait(guessRevealTiming.suspense);
   if (generation !== gameGeneration) return;
   incoming.classList.add('is-face-up');
-  await wait(520);
+  await wait(guessRevealTiming.cardFlip);
   if (generation !== gameGeneration) return;
 
   currentElement.remove();
