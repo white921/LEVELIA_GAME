@@ -42,6 +42,15 @@ body {
     #f7f4ec;
 }
 
+body.is-fate-shifting {
+  background-color: #171b18;
+}
+
+body.is-fate-shifting #app {
+  filter: saturate(.72) brightness(.78);
+  transition: filter 900ms ease;
+}
+
 button { font: inherit; }
 
 button:focus-visible,
@@ -735,11 +744,11 @@ h1 span:last-child { color: var(--forest); }
 }
 
 .card-stage.is-fate-active::before {
-  animation: fate-seal-turn 2s cubic-bezier(.2,.7,.2,1) both;
+  animation: fate-seal-turn 3.5s cubic-bezier(.2,.7,.2,1) both;
 }
 
 .card-stage.is-fate-active::after {
-  animation: fate-seal-pulse 900ms ease-in-out infinite alternate;
+  animation: fate-seal-pulse 1200ms ease-in-out infinite alternate;
 }
 
 .playing-card {
@@ -773,12 +782,143 @@ h1 span:last-child { color: var(--forest); }
 
 .playing-card.is-fate-erasing .corner,
 .playing-card.is-fate-erasing .card-center {
-  animation: fate-mark-erase 320ms ease-in forwards;
+  animation: fate-mark-erase 520ms ease-in forwards;
 }
 
 .playing-card.is-fate-restoring .corner,
 .playing-card.is-fate-restoring .card-center {
-  animation: fate-mark-restore 620ms cubic-bezier(.18,.8,.25,1) both;
+  animation: fate-mark-restore 900ms cubic-bezier(.18,.8,.25,1) both;
+}
+
+.fate-overlay {
+  --fate-x: 50vw;
+  --fate-y: 50vh;
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  overflow: hidden;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at var(--fate-x) var(--fate-y), transparent 0 13%, rgba(18,22,19,.12) 34%, rgba(10,14,12,.68) 100%),
+    repeating-linear-gradient(112deg, transparent 0 58px, rgba(232,201,130,.035) 59px 60px);
+  backdrop-filter: saturate(.72) brightness(.82);
+  transition: opacity 850ms ease, visibility 850ms;
+}
+
+.fate-overlay::before,
+.fate-overlay::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+}
+
+.fate-overlay::before {
+  inset: 0;
+  opacity: 0;
+  background:
+    radial-gradient(circle at var(--fate-x) var(--fate-y), rgba(255,239,191,.28) 0 1%, transparent 14%),
+    conic-gradient(from 20deg at var(--fate-x) var(--fate-y), transparent 0 9%, rgba(218,178,86,.07) 10% 12%, transparent 13% 31%, rgba(218,178,86,.05) 32% 35%, transparent 36% 100%);
+}
+
+.fate-overlay::after {
+  left: 0;
+  right: 0;
+  top: var(--fate-y);
+  height: 1px;
+  opacity: 0;
+  transform: scaleX(.08);
+  background: linear-gradient(90deg, transparent, rgba(255,231,173,.92), transparent);
+  box-shadow: 0 0 25px rgba(238,193,96,.8), 0 0 70px rgba(224,170,63,.36);
+}
+
+.fate-overlay.is-active {
+  visibility: visible;
+  opacity: 1;
+}
+
+.fate-overlay.is-active::before {
+  animation: fate-sky-breathe 1800ms ease-in-out infinite alternate;
+}
+
+.fate-overlay.is-rewriting::after {
+  animation: fate-horizon-open 1000ms cubic-bezier(.16,.8,.2,1) both;
+}
+
+.fate-overlay.is-revealed::before {
+  background:
+    radial-gradient(circle at var(--fate-x) var(--fate-y), rgba(255,244,205,.5) 0 3%, rgba(199,148,50,.13) 20%, transparent 48%),
+    conic-gradient(from 20deg at var(--fate-x) var(--fate-y), transparent 0 9%, rgba(232,197,115,.1) 10% 12%, transparent 13% 31%, rgba(232,197,115,.08) 32% 35%, transparent 36% 100%);
+}
+
+.fate-overlay.is-resolved {
+  animation: fate-world-release 800ms ease-out both;
+}
+
+.fate-orbit {
+  position: absolute;
+  left: var(--fate-x);
+  top: var(--fate-y);
+  border-radius: 50%;
+  opacity: 0;
+}
+
+.fate-orbit-outer {
+  width: min(88vmin, 720px);
+  aspect-ratio: 1;
+  border: 1px solid rgba(218, 181, 99, .52);
+  transform: translate(-50%, -50%);
+  background:
+    repeating-conic-gradient(from 0deg, rgba(236,207,139,.62) 0 1deg, transparent 1deg 29deg),
+    radial-gradient(circle, transparent 59%, rgba(218,181,99,.16) 59.4% 60%, transparent 60.4%);
+}
+
+.fate-orbit-outer::before,
+.fate-orbit-outer::after {
+  content: '';
+  position: absolute;
+  inset: 9%;
+  border: 1px solid rgba(232, 204, 139, .34);
+  transform: rotate(45deg);
+}
+
+.fate-orbit-outer::after {
+  inset: 19%;
+  transform: rotate(22.5deg);
+}
+
+.fate-orbit-inner {
+  width: min(50vmin, 410px);
+  aspect-ratio: 1;
+  border: 1px solid rgba(247, 221, 157, .72);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 45px rgba(210,156,55,.18), inset 0 0 45px rgba(210,156,55,.1);
+}
+
+.fate-overlay.is-active .fate-orbit-outer {
+  animation: fate-orbit-outer 4.5s cubic-bezier(.18,.72,.22,1) both;
+}
+
+.fate-overlay.is-active .fate-orbit-inner {
+  animation: fate-orbit-inner 3.2s ease-in-out both;
+}
+
+.fate-flare {
+  position: absolute;
+  left: var(--fate-x);
+  top: var(--fate-y);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  background: #fff4d2;
+  box-shadow: 0 0 30px #f0c96e, 0 0 90px rgba(226,166,49,.72), 0 0 180px rgba(226,166,49,.38);
+}
+
+.fate-overlay.is-rewriting .fate-flare {
+  animation: fate-flare-bloom 1050ms ease-in-out both;
 }
 
 .card-face {
@@ -999,6 +1139,43 @@ h1 span:last-child { color: var(--forest); }
 @keyframes fate-mark-restore {
   0% { opacity: 0; filter: blur(8px); transform: translateY(7px) scale(1.18); }
   100% { opacity: 1; filter: blur(0); transform: translateY(0) scale(1); }
+}
+
+@keyframes fate-sky-breathe {
+  from { opacity: .35; }
+  to { opacity: .82; }
+}
+
+@keyframes fate-horizon-open {
+  0% { opacity: 0; transform: scaleX(.08); }
+  38% { opacity: 1; transform: scaleX(.72); }
+  100% { opacity: 0; transform: scaleX(1); }
+}
+
+@keyframes fate-orbit-outer {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.42) rotate(-35deg); }
+  24% { opacity: .48; }
+  72% { opacity: .28; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.18) rotate(38deg); }
+}
+
+@keyframes fate-orbit-inner {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.64) rotate(20deg); }
+  30% { opacity: .72; }
+  72% { opacity: .45; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.08) rotate(-32deg); }
+}
+
+@keyframes fate-flare-bloom {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.2); }
+  42% { opacity: .95; transform: translate(-50%, -50%) scale(1.7); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(7); }
+}
+
+@keyframes fate-world-release {
+  0% { opacity: 1; }
+  35% { opacity: .92; background-color: rgba(244,217,153,.12); }
+  100% { opacity: 0; }
 }
 
 .decision {
@@ -1267,4 +1444,6 @@ kbd {
     transition-duration: 1ms !important;
     animation-duration: 1ms !important;
   }
+
+  .fate-overlay { backdrop-filter: brightness(.88); }
 }

@@ -26,10 +26,11 @@ const guessRevealTiming = {
 } as const;
 
 const fateShiftTiming = {
-  falseResult: 720,
-  awakening: 900,
-  erase: 320,
-  restore: 720,
+  falseResult: 950,
+  awakening: 1500,
+  erase: 520,
+  restore: 1000,
+  resolution: 800,
 } as const;
 
 const fateDemoRequested = new URLSearchParams(window.location.search).get('fate-demo') === '1';
@@ -53,6 +54,7 @@ const streakCount = requiredElement<HTMLElement>('streak-count');
 const bestCount = requiredElement<HTMLElement>('best-count');
 const deckCount = requiredElement<HTMLElement>('deck-count');
 const lobbyBestCount = requiredElement<HTMLElement>('lobby-best-count');
+const fateOverlay = requiredElement<HTMLDivElement>('fate-overlay');
 
 let deck: PlayingCard[] = [];
 let current: PlayingCard | undefined;
@@ -145,6 +147,21 @@ function wait(duration: number): Promise<void> {
   return new Promise(resolve => window.setTimeout(resolve, duration));
 }
 
+function startFateEffects(): void {
+  const stageRect = stage.getBoundingClientRect();
+  fateOverlay.style.setProperty('--fate-x', `${stageRect.left + stageRect.width / 2}px`);
+  fateOverlay.style.setProperty('--fate-y', `${stageRect.top + stageRect.height / 2}px`);
+  document.body.classList.add('is-fate-shifting');
+  fateOverlay.className = 'fate-overlay is-active';
+  stage.classList.add('is-fate-active');
+}
+
+function resetFateEffects(): void {
+  document.body.classList.remove('is-fate-shifting');
+  fateOverlay.className = 'fate-overlay';
+  stage.classList.remove('is-fate-active');
+}
+
 async function dealInitialCard(card: PlayingCard, generation: number): Promise<boolean> {
   currentElement = createCardElement(card, false);
   currentElement.classList.add('from-deck');
@@ -225,7 +242,7 @@ async function makeGuess(guess: Guess): Promise<void> {
     await wait(fateShiftTiming.falseResult);
     if (generation !== gameGeneration) return;
 
-    stage.classList.add('is-fate-active');
+    startFateEffects();
     incoming.classList.add('is-fate-awakening');
     resultBanner.className = 'result-banner is-fate';
     resultBanner.querySelector('.result-kicker')!.textContent = 'FATE INTERVENES';
@@ -234,6 +251,7 @@ async function makeGuess(guess: Guess): Promise<void> {
     await wait(fateShiftTiming.awakening);
     if (generation !== gameGeneration) return;
 
+    fateOverlay.classList.add('is-rewriting');
     incoming.classList.add('is-fate-erasing');
     await wait(fateShiftTiming.erase);
     if (generation !== gameGeneration) return;
@@ -242,10 +260,18 @@ async function makeGuess(guess: Guess): Promise<void> {
     result = resolveGuess(previous, next, guess);
     incoming.classList.remove('is-fate-erasing');
     incoming.classList.add('is-fate-restoring');
+    fateOverlay.classList.remove('is-rewriting');
+    fateOverlay.classList.add('is-revealed');
     await wait(fateShiftTiming.restore);
     if (generation !== gameGeneration) return;
+    resultBanner.querySelector('.result-kicker')!.textContent = 'FATE REWRITTEN';
+    resultMessage.textContent = '運命が書き換わった';
+    decisionPrompt.textContent = '新しい運命を確定しています…';
+    fateOverlay.classList.add('is-resolved');
+    await wait(fateShiftTiming.resolution);
+    if (generation !== gameGeneration) return;
     incoming.classList.remove('is-fate-awakening', 'is-fate-restoring');
-    stage.classList.remove('is-fate-active');
+    resetFateEffects();
   }
 
   currentElement.remove();
@@ -296,7 +322,7 @@ async function makeGuess(guess: Guess): Promise<void> {
 async function startGame(): Promise<void> {
   const generation = ++gameGeneration;
   setControlsEnabled(false);
-  stage.classList.remove('is-fate-active');
+  resetFateEffects();
   deck = shuffleDeck(createDeck());
   const first = deck.pop();
   if (!first) throw new Error('The deck is empty');
@@ -337,6 +363,7 @@ function renderRoute(route: ActivityRoute): void {
   document.title = 'LEVELIA GAMES';
   gameGeneration += 1;
   setControlsEnabled(false);
+  resetFateEffects();
   updateBestDisplays();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
