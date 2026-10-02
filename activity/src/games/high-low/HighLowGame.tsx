@@ -465,7 +465,7 @@ export function HighLowGame({ best, onBestChange, accessToken, inDiscord, onWall
                 <div><span>いま精算</span><strong>{formatLia(hand.potentialPayout)}</strong></div>
                 <div className="continuation-next"><span>次に勝つと</span><strong>{formatLia(hand.nextWinPayout)}</strong><small>{hand.nextWinMultiplier}倍</small></div>
                 <button className="cashout-button" type="button" disabled={busy} onClick={() => void cashOut()}>
-                  いま精算する
+                  <span className="cashout-icon" aria-hidden="true">✓</span>いま精算する
                 </button>
               </div>
             ) : null}
