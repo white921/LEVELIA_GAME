@@ -100,31 +100,12 @@ a:focus-visible {
 }
 
 .brand-mark {
-  position: relative;
-  width: 38px;
+  width: 42px;
   height: 42px;
-  display: grid;
-  place-items: center;
-  border: 1px solid rgba(146, 105, 38, .4);
-  border-radius: 50% 50% 48% 48% / 36% 36% 64% 64%;
-  background: linear-gradient(145deg, #fffdfa, #e6d9bd);
-  color: #6f5427;
-  font-family: 'Iowan Old Style', 'Yu Mincho', YuMincho, serif;
-  font-size: 18px;
-  font-weight: 700;
-  box-shadow: 0 7px 18px rgba(89, 72, 40, .13), inset 0 0 0 3px rgba(255,255,255,.65);
-}
-
-.brand-mark::after {
-  content: '';
-  position: absolute;
-  right: -4px;
-  bottom: 4px;
-  width: 8px;
-  height: 8px;
-  transform: rotate(45deg);
-  border: 1px solid #b48943;
-  background: #f9f2e2;
+  display: block;
+  flex: 0 0 auto;
+  object-fit: contain;
+  border-radius: 10px;
 }
 
 .brand-copy { display: grid; }
@@ -280,12 +261,11 @@ a:focus-visible {
 .lobby-view { padding: 0; }
 
 .lobby-hero {
-  min-height: 200px;
-  padding: 38px clamp(28px, 6vw, 70px);
+  min-height: 136px;
+  padding: 20px clamp(28px, 6vw, 70px);
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-items: center;
-  gap: 38px;
   overflow: hidden;
   position: relative;
   border: 1px solid rgba(91, 95, 86, .17);
@@ -309,7 +289,7 @@ a:focus-visible {
 
 .lobby-heading { position: relative; z-index: 1; }
 
-.lobby-heading .eyebrow { margin-bottom: 12px; }
+.lobby-heading .eyebrow { margin-bottom: 6px; }
 
 .lobby-title {
   display: grid;
@@ -322,7 +302,7 @@ a:focus-visible {
 .lobby-title span {
   color: var(--gold);
   font-family: 'Avenir Next', Inter, sans-serif;
-  font-size: clamp(15px, 2vw, 20px);
+  font-size: clamp(12px, 1.4vw, 14px);
   font-weight: 800;
   letter-spacing: .34em;
   line-height: 1.2;
@@ -330,17 +310,17 @@ a:focus-visible {
 
 .lobby-title strong {
   color: var(--ink);
-  font-size: clamp(42px, 6.5vw, 70px);
+  font-size: clamp(32px, 4vw, 46px);
   font-weight: 600;
   line-height: 1;
   letter-spacing: -.045em;
 }
 
 .lobby-heading > p:last-child {
-  margin: 19px 0 0;
+  margin: 10px 0 0;
   color: var(--ink-soft);
   font-family: 'Yu Mincho', YuMincho, serif;
-  font-size: 15px;
+  font-size: 14px;
 }
 
 .lobby-section-heading {
@@ -1518,7 +1498,7 @@ kbd {
   }
   .lobby-heading-view { padding-top: 18px; }
   .lobby-view { padding-top: 0; }
-  .lobby-hero { min-height: 180px; padding: 28px; }
+  .lobby-hero { min-height: 128px; padding: 18px 28px; }
   .game-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
   .game-tile { min-height: 185px; }
   .hero { padding: 34px 0 23px; }
@@ -1538,7 +1518,7 @@ kbd {
   .site-header { min-height: 67px; }
   .header-actions { gap: 6px; }
   .quiet-button { padding-inline: 11px; font-size: 12px; }
-  .brand-mark { width: 32px; height: 36px; }
+  .brand-mark { width: 36px; height: 36px; border-radius: 8px; }
   .brand-subtitle { letter-spacing: .1em; }
   .account-panel {
     grid-template-columns: minmax(0, 1fr) auto;
@@ -1552,14 +1532,13 @@ kbd {
   .balance-display strong { font-size: 19px; }
   .balance-refresh { grid-column: 2; grid-row: 1 / span 2; }
   .lobby-hero {
-    min-height: 195px;
-    padding: 28px 22px;
+    min-height: 120px;
+    padding: 16px 20px;
     grid-template-columns: 1fr;
-    gap: 18px;
   }
   .lobby-title span { font-size: 12px; }
-  .lobby-title strong { font-size: 42px; }
-  .lobby-heading > p:last-child { max-width: 230px; font-size: 13px; line-height: 1.7; }
+  .lobby-title strong { font-size: clamp(26px, 7.5vw, 34px); }
+  .lobby-heading > p:last-child { font-size: 12px; line-height: 1.7; }
   .lobby-section-heading { margin-top: 31px; align-items: start; }
   .lobby-section-heading > p { display: none; }
   .game-tile {

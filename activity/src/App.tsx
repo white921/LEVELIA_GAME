@@ -18,7 +18,7 @@ function Header({ route, onOpenRules }: { route: ActivityRoute; onOpenRules: () 
   return (
     <header className="site-header">
       <a className="brand" href="#lobby" aria-label="LEVELIA GAMES ロビー">
-        <span className="brand-mark" aria-hidden="true">L</span>
+        <img className="brand-mark" src="./images/levelia-game-icon.png" alt="" width="42" height="42" />
         <span className="brand-copy">
           <span className="brand-name">LEVELIA</span>
           <span className="brand-subtitle">ADVENTURERS' GUILD</span>
@@ -104,6 +104,7 @@ function RulesDialog({ dialogRef }: { dialogRef: RefObject<HTMLDialogElement | n
           <li>中央のカードを確認し、次が高ければHIGH、低ければLOWを選びます。</li>
           <li>正解後は現在倍率で精算するか、そのまま次を予想できます。</li>
           <li>同じ数字は引き分けで連勝を維持し、5連勝すると6倍で強制精算します。</li>
+          <li>最高連勝の記録はゲームをまたいで続きます。精算や引き分けでは途切れず、負けたときだけ連勝が途切れます。</li>
           <li>カードは山札へ戻りません。残り札は表示しないため、自分で覚えてください。</li>
         </ol>
         <p>ジョーカーは使いません。Aが最大、2が最小です。切断後は5分間復帰でき、それを過ぎると1勝以上は自動精算、0勝は払い戻しなしで終了します。</p>

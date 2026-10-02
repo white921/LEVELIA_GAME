@@ -302,9 +302,18 @@ export function createHighLowStore(mysqlUrl, {
   }
 
   async function readBestStreak(userId, connection = getPool()) {
+    // A losing hand retains its wins before the loss. Reset the run only
+    // AFTER that hand; cashouts, ties and expiry do not break a winning run.
     const [rows] = await connection.execute(
-      `SELECT COALESCE(MAX(streak), 0) AS best_streak
-       FROM levelia_game_high_low_hands WHERE user_id = ?`,
+      `WITH grouped_hands AS (
+         SELECT streak, COALESCE(SUM(status = 'lost') OVER (
+           ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+         ), 0) AS loss_group
+         FROM levelia_game_high_low_hands WHERE user_id = ?
+       ), winning_runs AS (
+         SELECT SUM(streak) AS wins FROM grouped_hands GROUP BY loss_group
+       )
+       SELECT COALESCE(MAX(wins), 0) AS best_streak FROM winning_runs`,
       [userId],
     );
     return Number(rows[0].best_streak);

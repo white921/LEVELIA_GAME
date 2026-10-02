@@ -136,7 +136,7 @@ test('wager and payout are atomic, idempotent, and never move the LEVELIA Game w
          SET streak = 4, current_card = 'spades-5', remaining_deck = ? WHERE id = ?`,
         [JSON.stringify(['hearts-9']), successful.hand.id],
       );
-      assert.equal(await store.readBestStreak(userId), 4);
+      assert.equal(await store.readBestStreak(userId), 5);
       const finalGuess = {
         userId, handId: successful.hand.id, guess: 'higher',
         requestId: '123e4567-e89b-42d3-a456-426614174005', expectedVersion: successful.hand.version,
@@ -144,7 +144,7 @@ test('wager and payout are atomic, idempotent, and never move the LEVELIA Game w
       const won = await store.guess(finalGuess);
       assert.equal(won.hand, null);
       assert.equal(won.settlement.reason, 'max_streak');
-      assert.equal(won.bestStreak, 5);
+      assert.equal(won.bestStreak, 6);
       assert.deepEqual(await store.guess(finalGuess), won);
       // Responses persisted by an older release also receive the DB score on replay.
       await connection.execute(
@@ -155,8 +155,8 @@ test('wager and payout are atomic, idempotent, and never move the LEVELIA Game w
 
       const freshStore = createHighLowStore(mysqlUrl, { workerIntervalMs: 60_000 });
       try {
-        assert.equal(await freshStore.readBestStreak(userId), 5);
-        assert.equal((await freshStore.readSession(userId)).bestStreak, 5);
+        assert.equal(await freshStore.readBestStreak(userId), 6);
+        assert.equal((await freshStore.readSession(userId)).bestStreak, 6);
         assert.equal(await freshStore.readBestStreak(LEVELIA_GAME_USER_ID), 0);
         assert.equal((await freshStore.readSession('999999999999999999')).bestStreak, 0);
       } finally {
@@ -174,8 +174,8 @@ test('wager and payout are atomic, idempotent, and never move the LEVELIA Game w
         requestId: '123e4567-e89b-42d3-a456-426614174007', expectedVersion: next.hand.version,
       });
       assert.equal(lost.event.result, 'loss');
-      assert.equal(lost.bestStreak, 5);
-      assert.equal(await store.readBestStreak(userId), 5);
+      assert.equal(lost.bestStreak, 8);
+      assert.equal(await store.readBestStreak(userId), 8);
       // A player's completed loss still contains the streak reached before losing.
       await connection.execute('UPDATE levelia_game_high_low_hands SET streak = 0 WHERE id <> ?', [next.hand.id]);
       assert.equal(await store.readBestStreak(userId), 2);
@@ -201,6 +201,8 @@ test('wager and payout are atomic, idempotent, and never move the LEVELIA Game w
         await store.expireInactiveHands();
         assert.equal((await store.readSession(userId)).wallet, settledSession.wallet);
       }
+
+      await verifyCrossGameStreaks(connection, store);
     } finally {
       await store.close();
     }
@@ -208,3 +210,71 @@ test('wager and payout are atomic, idempotent, and never move the LEVELIA Game w
     await connection.end();
   }
 });
+
+async function verifyCrossGameStreaks(connection, store) {
+  const player = '222222222222222222';
+  await connection.execute('INSERT INTO accounts (user_id, user_name, wallet) VALUES (?, ?, ?)',
+    [player, 'cross-game-player', 20_000]);
+  let hand;
+  async function start() {
+    const result = await store.start({ userId: player, wager: 100, requestId: randomUUID() });
+    hand = result.hand;
+    assert.equal(hand.streak, 0);
+    assert.equal(hand.nextWinPayout, 150);
+  }
+  async function guess(result) {
+    // Fix only the draw, allowing production code to update wins and payouts.
+    const card = { win: 'hearts-9', tie: 'hearts-5', loss: 'hearts-3' }[result];
+    await connection.execute(
+      "UPDATE levelia_game_high_low_hands SET current_card = 'spades-5', remaining_deck = ? WHERE id = ?",
+      [JSON.stringify([card]), hand.id],
+    );
+    const input = { userId: player, handId: hand.id, guess: 'higher', expectedVersion: hand.version, requestId: randomUUID() };
+    const response = await store.guess(input);
+    assert.equal(response.event.result, result);
+    assert.deepEqual(await store.guess(input), response); // Replay never adds wins.
+    hand = response.hand;
+    return response;
+  }
+
+  await start();
+  for (let win = 1; win <= 5; win++) {
+    const result = await guess('win');
+    assert.equal(result.bestStreak, win);
+    if (win === 5) {
+      assert.equal(hand, null);
+      assert.equal(result.settlement.reason, 'max_streak');
+      assert.equal(result.settlement.payout, 600);
+    }
+  }
+  await start();
+  assert.equal(await store.readBestStreak(player), 5);
+  assert.equal((await guess('win')).bestStreak, 6);
+  assert.equal((await guess('tie')).bestStreak, 6);
+  assert.equal(hand.streak, 1);
+  assert.equal((await guess('win')).bestStreak, 7);
+  const cashout = await store.cashout({ userId: player, handId: hand.id, expectedVersion: hand.version, requestId: randomUUID() });
+  assert.equal(cashout.settlement.payout, 200); // Uses 2 wins in this game, not 7.
+  await start();
+  assert.equal((await guess('win')).bestStreak, 8);
+  await connection.execute('UPDATE levelia_game_high_low_hands SET last_heartbeat_at = DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 6 MINUTE) WHERE id = ?', [hand.id]);
+  assert.equal((await store.readSession(player)).hand, null);
+  await start();
+  // Even expiry with no wins must not break the ongoing record.
+  await connection.execute('UPDATE levelia_game_high_low_hands SET last_heartbeat_at = DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 6 MINUTE) WHERE id = ?', [hand.id]);
+  await store.readSession(player);
+  await start();
+  assert.equal((await guess('win')).bestStreak, 9);
+  assert.equal((await guess('loss')).bestStreak, 9);
+  await start();
+  for (let win = 0; win < 5; win++) assert.equal((await guess('win')).bestStreak, 9);
+  await start();
+  for (let win = 6; win <= 10; win++) assert.equal((await guess('win')).bestStreak, Math.max(9, win));
+  const restarted = createHighLowStore(mysqlUrl, { workerIntervalMs: 60_000 });
+  try {
+    assert.equal((await restarted.readSession(player)).bestStreak, 10);
+    assert.equal(await restarted.readBestStreak(userId), 2); // Other player's records are isolated.
+  } finally {
+    await restarted.close();
+  }
+}
