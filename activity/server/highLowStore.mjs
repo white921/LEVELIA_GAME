@@ -16,6 +16,8 @@ import {
 } from './highLowRules.mjs';
 
 export const LEVELIA_GAME_USER_ID = '1552246348756025344';
+// Explicit operator-approved exception; normal access and wallet checks still apply.
+export const HIGH_LOW_ALLOWED_SUB_ACCOUNT_ID = '1551725849009586270';
 const DISCONNECT_GRACE_MS = 5 * 60 * 1_000;
 const HAND_LIFETIME_MINUTES = 30;
 const MAX_INTEGER_WALLET = 2_147_483_647;
@@ -148,7 +150,7 @@ export function createHighLowStore(mysqlUrl, {
       'SELECT 1 FROM sub_accounts WHERE sub_user_id = ? LIMIT 1',
       [userId],
     );
-    if (rows.length > 0) {
+    if (rows.length > 0 && userId !== HIGH_LOW_ALLOWED_SUB_ACCOUNT_ID) {
       throw new ApiError(403, 'sub_account_not_allowed', 'サブアカウントではゲームに参加できません');
     }
   }

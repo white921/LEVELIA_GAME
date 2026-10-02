@@ -203,6 +203,7 @@ test('wager and payout are atomic, idempotent, and never move the LEVELIA Game w
       }
 
       await verifyCrossGameStreaks(connection, store);
+      await verifySubAccountException(connection, store);
     } finally {
       await store.close();
     }
@@ -210,6 +211,54 @@ test('wager and payout are atomic, idempotent, and never move the LEVELIA Game w
     await connection.end();
   }
 });
+
+async function verifySubAccountException(connection, store) {
+  const allowedSub = '1551725849009586270';
+  const otherSub = '333333333333333333';
+  await connection.execute(
+    'INSERT INTO accounts (user_id, user_name, wallet) VALUES (?, ?, ?), (?, ?, ?)',
+    [allowedSub, 'allowed-sub', 1000, otherSub, 'blocked-sub', 1000],
+  );
+  await connection.execute('INSERT INTO sub_accounts (main_user_id, sub_user_id) VALUES (?, ?), (?, ?)',
+    [userId, allowedSub, userId, otherSub]);
+  const mainWalletBefore = await store.readWallet(userId);
+
+  await assert.rejects(store.start({ userId: otherSub, wager: 100, requestId: randomUUID() }), { code: 'sub_account_not_allowed' });
+  assert.equal(await store.readWallet(otherSub), '1000');
+  const [rejectedHands] = await connection.execute('SELECT id FROM levelia_game_high_low_hands WHERE user_id = ?', [otherSub]);
+  assert.equal(rejectedHands.length, 0);
+
+  await connection.execute('UPDATE accounts SET is_frozen = TRUE WHERE user_id = ?', [allowedSub]);
+  await assert.rejects(store.start({ userId: allowedSub, wager: 100, requestId: randomUUID() }), { code: 'account_frozen' });
+  await connection.execute('UPDATE accounts SET is_frozen = FALSE, wallet = 99 WHERE user_id = ?', [allowedSub]);
+  await assert.rejects(store.start({ userId: allowedSub, wager: 100, requestId: randomUUID() }), { code: 'insufficient_balance' });
+  await connection.execute('UPDATE accounts SET wallet = 1000 WHERE user_id = ?', [allowedSub]);
+
+  const input = { userId: allowedSub, wager: 100, requestId: randomUUID() };
+  const started = await store.start(input);
+  assert.equal(started.wallet, '900');
+  assert.deepEqual(await store.start(input), started);
+  assert.equal(await store.readWallet(allowedSub), '900');
+  assert.equal(await store.readWallet(userId), mainWalletBefore);
+  await assert.rejects(store.start({ ...input, requestId: randomUUID() }), { code: 'active_hand_exists' });
+  await connection.execute(
+    "UPDATE levelia_game_high_low_hands SET current_card = 'spades-5', remaining_deck = ? WHERE id = ?",
+    [JSON.stringify(['hearts-9']), started.hand.id],
+  );
+  const won = await store.guess({
+    userId: allowedSub, handId: started.hand.id, expectedVersion: started.hand.version,
+    guess: 'higher', requestId: randomUUID(),
+  });
+  assert.equal(won.event.result, 'win');
+  const settled = await store.cashout({
+    userId: allowedSub, handId: won.hand.id, expectedVersion: won.hand.version, requestId: randomUUID(),
+  });
+  assert.equal(settled.settlement.wallet, '1050');
+  assert.equal(await store.readWallet(userId), mainWalletBefore);
+  assert.equal(await store.readWallet(LEVELIA_GAME_USER_ID), '777777');
+  const [subRows] = await connection.execute('SELECT sub_user_id FROM sub_accounts WHERE main_user_id = ?', [userId]);
+  assert.equal(subRows.length, 2); // Registration is preserved; no main-account promotion.
+}
 
 async function verifyCrossGameStreaks(connection, store) {
   const player = '222222222222222222';
