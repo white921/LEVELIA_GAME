@@ -798,15 +798,15 @@ h1 span:last-child { color: var(--forest); }
 }
 
 .scoreboard {
-  display: flex;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   border-bottom: 1px solid var(--line);
   background: linear-gradient(180deg, #fffefb, #faf7f0);
 }
 
 .score-item {
-  min-width: 106px;
-  padding: 16px 28px 15px;
+  min-width: 0;
+  padding: 16px clamp(8px, 2.5vw, 28px) 15px;
   display: grid;
   justify-items: center;
   gap: 3px;
@@ -832,7 +832,11 @@ h1 span:last-child { color: var(--forest); }
 .table {
   position: relative;
   min-height: 390px;
+  padding: 36px 28px 30px;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(200px, 1fr) auto;
+  gap: 20px;
   place-items: center;
   overflow: hidden;
   isolation: isolate;
@@ -890,6 +894,7 @@ h1 span:last-child { color: var(--forest); }
 
 .card-stage {
   position: relative;
+  grid-area: 1 / 1;
   width: 142px;
   height: 200px;
   perspective: 1100px;
@@ -1187,19 +1192,19 @@ h1 span:last-child { color: var(--forest); }
 }
 
 .deck-zone {
-  position: absolute;
-  top: 50%;
+  position: relative;
+  grid-area: 1 / 1;
+  justify-self: end;
+  margin-right: 8%;
   display: grid;
   justify-items: center;
   gap: 13px;
-  transform: translateY(-50%);
   color: #87918b;
   font-size: 10px;
   font-weight: 800;
   letter-spacing: .12em;
 }
 
-.deck-zone { left: calc(50% + 190px); }
 .deck-zone b { color: var(--forest); }
 
 .deck-stack { width: 76px; height: 108px; }
@@ -1220,16 +1225,21 @@ h1 span:last-child { color: var(--forest); }
 .deck-card-middle { transform: translate(-4px, 4px); opacity: .68; }
 
 .result-banner {
-  position: absolute;
-  left: 50%;
-  bottom: 31px;
+  grid-area: 2 / 1;
+  width: 100%;
+  min-width: 0;
+  min-height: 54px;
   display: grid;
+  align-content: center;
   justify-items: center;
-  transform: translateX(-50%) translateY(0);
+  text-align: center;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+  transform: translateY(0);
   transition: opacity 180ms ease, transform 180ms ease;
 }
 
-.result-banner.is-hidden { opacity: 0; transform: translateX(-50%) translateY(8px); }
+.result-banner.is-hidden { opacity: 0; transform: translateY(8px); }
 
 .result-kicker {
   color: #8b928d;
@@ -1515,7 +1525,7 @@ kbd {
   .hero::after { display: none; }
   .game-shell { border-radius: 20px; }
   .table { min-height: 350px; }
-  .deck-zone { left: auto; right: 28px; transform: translateY(-50%) scale(.78); }
+  .deck-zone { margin-right: 0; transform: scale(.78); transform-origin: right center; }
   .decision { padding-inline: 18px; }
   .game-setup { padding: 28px 18px; }
   .payout-table { grid-template-columns: repeat(6, minmax(0, 1fr)); }
@@ -1568,22 +1578,21 @@ kbd {
   .game-enter { font-size: 9px; }
   .game-tile-locked .game-tile-copy strong { font-size: 19px; }
   .hero-copy { font-size: 13px; }
-  .score-item { min-width: 0; flex: 1; padding: 14px 12px; }
-  .table { min-height: 330px; }
+  .score-item { padding: 14px 6px; }
+  .score-item strong { font-size: clamp(17px, 5vw, 25px); }
+  .table { min-height: 330px; padding: 28px 18px 24px; grid-template-rows: minmax(176px, 1fr) auto; }
   .card-stage { width: 124px; height: 176px; }
   .card-center span { font-size: 48px; }
   .deck-zone {
     gap: 8px;
-    transform: translateY(-50%);
+    transform: none;
     font-size: 12px;
     letter-spacing: .08em;
   }
-  .deck-zone { right: 10px; }
   .deck-stack { width: 48px; height: 68px; }
   .deck-card { border-width: 3px; border-radius: 7px; }
-  .result-banner { bottom: 20px; }
   .result-kicker { font-size: 11px; }
-  .result-banner strong { font-size: 20px; }
+  .result-banner strong { font-size: clamp(17px, 4.8vw, 20px); }
   .decision-buttons { gap: 9px; }
   .guess-button { min-height: 64px; padding-inline: 11px; grid-template-columns: auto 1fr; gap: 9px; }
   .guess-icon { width: 32px; height: 32px; }
