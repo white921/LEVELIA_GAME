@@ -31,15 +31,15 @@ function response() {
   };
 }
 
-const closedBalanceStore = {
-  async read() {
+const closedHighLowStore = {
+  async readWallet() {
     throw new Error('not expected');
   },
   async close() {},
 };
 
 test('config reports Discord authentication as disabled without secrets', async () => {
-  const api = createActivityApi({ env: {}, balanceStore: closedBalanceStore });
+  const api = createActivityApi({ env: {}, highLowStore: closedHighLowStore });
   const res = response();
 
   assert.equal(await api.handle(request('GET'), res, new URL('http://local/api/config')), true);
@@ -51,7 +51,7 @@ test('token exchange returns only the Discord access token', async () => {
   const fetchCalls = [];
   const api = createActivityApi({
     env: { DISCORD_CLIENT_ID: '123456789012345678', DISCORD_CLIENT_SECRET: 'secret' },
-    balanceStore: closedBalanceStore,
+    highLowStore: closedHighLowStore,
     fetchImpl: async (url, options) => {
       fetchCalls.push({ url, options });
       return new Response(JSON.stringify({ access_token: 'access', refresh_token: 'do-not-return' }), {
@@ -74,8 +74,8 @@ test('token exchange returns only the Discord access token', async () => {
 
 test('balance uses the Discord-verified user id for the read-only lookup', async () => {
   const lookedUpUserIds = [];
-  const balanceStore = {
-    async read(userId) {
+  const highLowStore = {
+    async readWallet(userId) {
       lookedUpUserIds.push(userId);
       return '1234';
     },
@@ -83,7 +83,7 @@ test('balance uses the Discord-verified user id for the read-only lookup', async
   };
   const api = createActivityApi({
     env: {},
-    balanceStore,
+    highLowStore,
     fetchImpl: async (_url, options) => {
       assert.equal(options.headers.Authorization, 'Bearer access-token');
       return new Response(JSON.stringify({ id: '123456789012345678' }), {
@@ -106,11 +106,40 @@ test('balance uses the Discord-verified user id for the read-only lookup', async
 });
 
 test('balance rejects requests without a Discord access token', async () => {
-  const api = createActivityApi({ env: {}, balanceStore: closedBalanceStore });
+  const api = createActivityApi({ env: {}, highLowStore: closedHighLowStore });
   const res = response();
 
   await api.handle(request('GET'), res, new URL('http://local/api/balance'));
 
   assert.equal(res.statusCode, 401);
   assert.equal(res.json().error, 'missing_access_token');
+});
+
+test('high-low start uses only the Discord-verified user id', async () => {
+  const starts = [];
+  const highLowStore = {
+    async start(input) {
+      starts.push(input);
+      return { wallet: '900', hand: { id: '1' }, openingAutoDrawnCards: [] };
+    },
+    async close() {},
+  };
+  const api = createActivityApi({
+    env: {},
+    highLowStore,
+    fetchImpl: async () => new Response(JSON.stringify({ id: '123456789012345678' }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }),
+  });
+  const res = response();
+  const requestId = '123e4567-e89b-42d3-a456-426614174000';
+  await api.handle(
+    request('POST', { authorization: 'Bearer access-token', 'content-type': 'application/json' },
+      JSON.stringify({ wager: 100, requestId, userId: '999999999999999999' })),
+    res,
+    new URL('http://local/api/high-low/start'),
+  );
+  assert.equal(res.statusCode, 201);
+  assert.deepEqual(starts, [{ userId: '123456789012345678', wager: 100, requestId }]);
 });

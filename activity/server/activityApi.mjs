@@ -1,5 +1,5 @@
-import { createBalanceStore } from './balanceStore.mjs';
 import { exchangeDiscordCode, fetchCurrentDiscordUser } from './discordClient.mjs';
+import { createHighLowStore } from './highLowStore.mjs';
 import {
   ApiError,
   readBearerToken,
@@ -24,10 +24,37 @@ function validateAuthorizationCode(value) {
   return value;
 }
 
+function validateRequestId(value) {
+  if (typeof value !== 'string'
+    || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)) {
+    throw new ApiError(400, 'invalid_request_id', 'requestId must be a UUID');
+  }
+  return value.toLowerCase();
+}
+
+function validateHandId(value) {
+  if (typeof value !== 'string' || !/^[1-9]\d{0,19}$/.test(value)) {
+    throw new ApiError(400, 'invalid_hand_id', 'Game id is invalid');
+  }
+  return value;
+}
+
+function validateExpectedVersion(value) {
+  if (!Number.isInteger(value) || value < 1 || value > 2_147_483_647) {
+    throw new ApiError(400, 'invalid_hand_version', 'Game version is invalid');
+  }
+  return value;
+}
+
+async function verifiedUser(request, fetchImpl) {
+  const accessToken = readBearerToken(request);
+  return fetchCurrentDiscordUser(accessToken, fetchImpl);
+}
+
 export function createActivityApi({
   env = process.env,
   fetchImpl = fetch,
-  balanceStore = createBalanceStore(readMysqlUrl(env)),
+  highLowStore = createHighLowStore(readMysqlUrl(env)),
 } = {}) {
   return {
     async handle(request, response, url) {
@@ -67,13 +94,71 @@ export function createActivityApi({
             sendMethodNotAllowed(response, ['GET']);
             return true;
           }
-          const accessToken = readBearerToken(request);
-          const user = await fetchCurrentDiscordUser(accessToken, fetchImpl);
-          const wallet = await balanceStore.read(user.id);
+          const user = await verifiedUser(request, fetchImpl);
+          const wallet = await highLowStore.readWallet(user.id);
           sendJson(response, 200, {
             accountFound: wallet !== null,
             wallet,
           });
+          return true;
+        }
+
+        if (pathname === '/api/high-low/session') {
+          if (request.method !== 'GET') {
+            sendMethodNotAllowed(response, ['GET']);
+            return true;
+          }
+          const user = await verifiedUser(request, fetchImpl);
+          sendJson(response, 200, await highLowStore.readSession(user.id));
+          return true;
+        }
+
+        if (pathname === '/api/high-low/start') {
+          if (request.method !== 'POST') {
+            sendMethodNotAllowed(response, ['POST']);
+            return true;
+          }
+          const user = await verifiedUser(request, fetchImpl);
+          const body = await readJson(request);
+          const wager = body?.wager;
+          if (!Number.isInteger(wager)) throw new ApiError(400, 'invalid_wager', 'Wager must be an integer');
+          const result = await highLowStore.start({
+            userId: user.id,
+            wager,
+            requestId: validateRequestId(body?.requestId),
+          });
+          sendJson(response, 201, result);
+          return true;
+        }
+
+        const highLowAction = /^\/api\/high-low\/([^/]+)\/(guess|cashout|heartbeat)$/.exec(pathname);
+        if (highLowAction) {
+          if (request.method !== 'POST') {
+            sendMethodNotAllowed(response, ['POST']);
+            return true;
+          }
+          const user = await verifiedUser(request, fetchImpl);
+          const handId = validateHandId(highLowAction[1]);
+          const action = highLowAction[2];
+          if (action === 'heartbeat') {
+            sendJson(response, 200, await highLowStore.heartbeat({ userId: user.id, handId }));
+            return true;
+          }
+          const body = await readJson(request);
+          const common = {
+            userId: user.id,
+            handId,
+            requestId: validateRequestId(body?.requestId),
+            expectedVersion: validateExpectedVersion(body?.expectedVersion),
+          };
+          if (action === 'guess') {
+            if (body?.guess !== 'higher' && body?.guess !== 'lower') {
+              throw new ApiError(400, 'invalid_guess', 'Guess must be higher or lower');
+            }
+            sendJson(response, 200, await highLowStore.guess({ ...common, guess: body.guess }));
+            return true;
+          }
+          sendJson(response, 200, await highLowStore.cashout(common));
           return true;
         }
 
@@ -90,7 +175,7 @@ export function createActivityApi({
       }
     },
     async close() {
-      await balanceStore.close();
+      await highLowStore.close();
     },
   };
 }
