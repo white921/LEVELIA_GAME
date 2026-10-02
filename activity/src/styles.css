@@ -677,7 +677,12 @@ h1 span:last-child { color: var(--forest); }
 
 .wager-options button:disabled { cursor: not-allowed; opacity: .38; }
 .wager-options small { color: var(--gold); font-size: 8px; font-weight: 800; letter-spacing: .18em; }
-.wager-options strong { font-family: 'Avenir Next', Inter, sans-serif; font-size: clamp(24px, 4vw, 34px); }
+.wager-options strong {
+  font-family: 'Iowan Old Style', 'Yu Mincho', YuMincho, Georgia, serif;
+  font-size: clamp(27px, 4vw, 37px);
+  font-weight: 600;
+  letter-spacing: -.03em;
+}
 .wager-options span { color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .12em; }
 
 .cashout-button {
@@ -748,14 +753,14 @@ h1 span:last-child { color: var(--forest); }
 
 .payout-table > span {
   min-width: 0;
-  padding: 11px 8px;
+  padding: 14px 8px;
   display: grid;
-  gap: 3px;
+  gap: 4px;
   background: rgba(255,255,255,.92);
 }
 
-.payout-table small { color: var(--muted); font-size: 9px; }
-.payout-table strong { color: var(--forest); font-size: 12px; }
+.payout-table small { color: var(--muted); font-size: clamp(11px, 1.1vw, 13px); }
+.payout-table strong { color: var(--forest); font-size: clamp(16px, 1.5vw, 18px); }
 
 .disconnect-note {
   max-width: 720px;
