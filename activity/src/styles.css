@@ -739,10 +739,11 @@ h1 span:last-child { color: var(--forest); }
   width: min(100%, 760px);
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 1px;
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 12px;
-  background: rgba(255,255,255,.45);
+  background: var(--line);
 }
 
 .payout-table > span {
@@ -750,9 +751,9 @@ h1 span:last-child { color: var(--forest); }
   padding: 11px 8px;
   display: grid;
   gap: 3px;
+  background: rgba(255,255,255,.92);
 }
 
-.payout-table > span + span { border-left: 1px solid var(--line); }
 .payout-table small { color: var(--muted); font-size: 9px; }
 .payout-table strong { color: var(--forest); font-size: 12px; }
 
@@ -1512,9 +1513,9 @@ kbd {
   .deck-zone { left: auto; right: 28px; transform: translateY(-50%) scale(.78); }
   .decision { padding-inline: 18px; }
   .game-setup { padding: 28px 18px; }
-  .payout-table { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .payout-table > span:nth-child(4) { border-left: 0; border-top: 1px solid var(--line); }
-  .payout-table > span:nth-child(5) { border-top: 1px solid var(--line); }
+  .payout-table { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .payout-table > span { grid-column: span 2; }
+  .payout-table > span:nth-child(n + 4) { grid-column: span 3; }
 }
 
 @media (max-width: 500px) {
@@ -1592,9 +1593,9 @@ kbd {
     padding: 13px;
   }
   .payout-table { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .payout-table > span:nth-child(3) { border-left: 0; border-top: 1px solid var(--line); }
-  .payout-table > span:nth-child(4) { border-left: 1px solid var(--line); }
-  .payout-table > span:nth-child(5) { border-left: 0; }
+  .payout-table > span,
+  .payout-table > span:nth-child(n + 4) { grid-column: span 1; }
+  .payout-table > span:nth-child(5) { grid-column: 1 / -1; }
   .continuation-offer { grid-template-columns: 1fr 1fr; }
   .continuation-offer .cashout-button { grid-column: 1 / -1; min-height: 48px; }
 }
