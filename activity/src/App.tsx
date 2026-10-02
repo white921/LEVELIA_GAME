@@ -1,10 +1,10 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import { AccountPanel } from './components/AccountPanel.js';
 import { isDiscordActivityContext } from './discord/discordActivity.js';
 import type { DiscordActivitySession } from './discord/discordActivity.js';
-import { readBestStreak } from './games/high-low/storage.js';
+import { fetchHighLowStats } from './games/high-low/api.js';
 import { navigateTo, routeFromHash } from './navigation.js';
 import type { ActivityRoute } from './navigation.js';
 
@@ -46,7 +46,7 @@ function LobbyHeading() {
   );
 }
 
-function LobbyGameList({ best, reducedMotion }: { best: number; reducedMotion: boolean }) {
+function LobbyGameList({ best, reducedMotion }: { best: number | null; reducedMotion: boolean }) {
   return (
     <motion.section
       key="lobby"
@@ -74,7 +74,7 @@ function LobbyGameList({ best, reducedMotion }: { best: number; reducedMotion: b
               <span>次の一枚を見抜け。</span>
             </span>
             <span className="game-tile-footer">
-              <span>最高連勝 <b>{best}</b></span>
+              <span>最高連勝 <b>{best ?? '—'}</b></span>
               <span className="game-enter">遊ぶ <b aria-hidden="true">→</b></span>
             </span>
           </button>
@@ -113,13 +113,61 @@ function RulesDialog({ dialogRef }: { dialogRef: RefObject<HTMLDialogElement | n
   );
 }
 
+function LegalDocuments() {
+  const dialogRef = useRef<HTMLDialogElement | null>(null);
+  const [document, setDocument] = useState<'terms' | 'privacy'>('terms');
+  const title = document === 'terms' ? '利用規約' : 'プライバシーポリシー';
+
+  function openDocument(next: 'terms' | 'privacy') {
+    setDocument(next);
+    dialogRef.current?.showModal();
+  }
+
+  return (
+    <footer className="legal-footer">
+      <button type="button" aria-haspopup="dialog" onClick={() => openDocument('terms')}>利用規約</button>
+      <button type="button" aria-haspopup="dialog" onClick={() => openDocument('privacy')}>プライバシーポリシー</button>
+      <dialog ref={dialogRef} className="legal-dialog" aria-labelledby="legal-title">
+        <form method="dialog" className="legal-dialog-heading">
+          <h2 id="legal-title">{title}</h2>
+          <button type="submit" autoFocus aria-label="規約を閉じる">閉じる</button>
+        </form>
+        <iframe key={document} src={`./${document}.html`} title={title} sandbox="" />
+      </dialog>
+    </footer>
+  );
+}
+
 export function App() {
   const reducedMotion = useReducedMotion() ?? false;
   const [route, setRoute] = useState<ActivityRoute>(() => routeFromHash(window.location.hash));
-  const [best, setBest] = useState(() => readBestStreak());
+  const [bestRecord, setBestRecord] = useState<{ accessToken: string; value: number } | null>(null);
   const [activitySession, setActivitySession] = useState<DiscordActivitySession | null>(null);
+  const accessToken = activitySession?.accessToken ?? null;
+  const best = accessToken && bestRecord?.accessToken === accessToken ? bestRecord.value : null;
+  const updateBest = useCallback((value: number) => {
+    if (!accessToken) return;
+    setBestRecord(previous => ({
+      accessToken,
+      value: previous?.accessToken === accessToken ? Math.max(previous.value, value) : value,
+    }));
+  }, [accessToken]);
   const [balanceRefreshKey, setBalanceRefreshKey] = useState(0);
   const rulesDialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    if (!accessToken) {
+      setBestRecord(null);
+      return;
+    }
+    let cancelled = false;
+    void fetchHighLowStats(accessToken).then(stats => {
+      if (!cancelled) updateBest(stats.bestStreak);
+    }).catch(() => {
+      if (!cancelled) console.error('High-low stats lookup failed');
+    });
+    return () => { cancelled = true; };
+  }, [accessToken, route, updateBest]);
 
   useEffect(() => {
     const renderRoute = () => setRoute(routeFromHash(window.location.hash));
@@ -152,7 +200,7 @@ export function App() {
                 <Suspense fallback={<p className="activity-loading">ゲームを準備しています…</p>}>
                   <HighLowGame
                     best={best}
-                    onBestChange={setBest}
+                    onBestChange={updateBest}
                     accessToken={activitySession?.accessToken ?? null}
                     inDiscord={isDiscordActivityContext()}
                     onWalletChanged={() => setBalanceRefreshKey(key => key + 1)}
@@ -162,6 +210,7 @@ export function App() {
             )}
           </AnimatePresence>
         </main>
+        <LegalDocuments />
         <RulesDialog dialogRef={rulesDialogRef} />
       </div>
     </>

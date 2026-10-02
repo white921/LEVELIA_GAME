@@ -1,5 +1,7 @@
 import { exchangeDiscordCode, fetchCurrentDiscordUser } from './discordClient.mjs';
 import { createHighLowStore } from './highLowStore.mjs';
+import { errorMetadata } from './safeLog.mjs';
+import { createAccessPolicy } from './accessPolicy.mjs';
 import {
   ApiError,
   readBearerToken,
@@ -56,6 +58,7 @@ export function createActivityApi({
   fetchImpl = fetch,
   highLowStore = createHighLowStore(readMysqlUrl(env)),
 } = {}) {
+  const accessPolicy = createAccessPolicy(env);
   return {
     async handle(request, response, url) {
       const pathname = normalizeApiPath(url.pathname);
@@ -85,16 +88,24 @@ export function createActivityApi({
             discordClientSecret,
             fetchImpl,
           });
+          if (accessPolicy.mode === 'private') {
+            const user = await fetchCurrentDiscordUser(accessToken, fetchImpl);
+            accessPolicy.assertAllowed(user.id);
+          }
           sendJson(response, 200, { access_token: accessToken });
           return true;
         }
+
+        // Enforce access on every protected API, including existing tokens and
+        // future routes. Never trust a user ID supplied by the browser.
+        const user = await verifiedUser(request, fetchImpl);
+        accessPolicy.assertAllowed(user.id);
 
         if (pathname === '/api/balance') {
           if (request.method !== 'GET') {
             sendMethodNotAllowed(response, ['GET']);
             return true;
           }
-          const user = await verifiedUser(request, fetchImpl);
           const wallet = await highLowStore.readWallet(user.id);
           sendJson(response, 200, {
             accountFound: wallet !== null,
@@ -103,12 +114,20 @@ export function createActivityApi({
           return true;
         }
 
+        if (pathname === '/api/high-low/stats') {
+          if (request.method !== 'GET') {
+            sendMethodNotAllowed(response, ['GET']);
+            return true;
+          }
+          sendJson(response, 200, { bestStreak: await highLowStore.readBestStreak(user.id) });
+          return true;
+        }
+
         if (pathname === '/api/high-low/session') {
           if (request.method !== 'GET') {
             sendMethodNotAllowed(response, ['GET']);
             return true;
           }
-          const user = await verifiedUser(request, fetchImpl);
           sendJson(response, 200, await highLowStore.readSession(user.id));
           return true;
         }
@@ -118,7 +137,6 @@ export function createActivityApi({
             sendMethodNotAllowed(response, ['POST']);
             return true;
           }
-          const user = await verifiedUser(request, fetchImpl);
           const body = await readJson(request);
           const wager = body?.wager;
           if (!Number.isInteger(wager)) throw new ApiError(400, 'invalid_wager', 'Wager must be an integer');
@@ -137,7 +155,6 @@ export function createActivityApi({
             sendMethodNotAllowed(response, ['POST']);
             return true;
           }
-          const user = await verifiedUser(request, fetchImpl);
           const handId = validateHandId(highLowAction[1]);
           const action = highLowAction[2];
           if (action === 'heartbeat') {
@@ -169,7 +186,7 @@ export function createActivityApi({
           sendJson(response, error.statusCode, { error: error.code, message: error.message });
           return true;
         }
-        console.error('Activity API request failed', error);
+        console.error('Activity API request failed', errorMetadata(error));
         sendJson(response, 500, { error: 'internal_error', message: 'Internal Server Error' });
         return true;
       }

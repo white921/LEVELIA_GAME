@@ -4,6 +4,7 @@ import { createServer } from 'node:http';
 import { extname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createActivityApi } from './server/activityApi.mjs';
+import { errorMetadata } from './server/safeLog.mjs';
 
 const activityDirectory = fileURLToPath(new URL('.', import.meta.url));
 const defaultRoot = resolve(activityDirectory, '../activity-dist');
@@ -141,7 +142,7 @@ const server = createServer(async (request, response) => {
 
     createReadStream(filePath).pipe(response);
   } catch (error) {
-    console.error('Activity request failed', error);
+    console.error('Activity request failed', errorMetadata(error));
     if (!response.headersSent) {
       writeText(response, 500, 'Internal Server Error');
     } else {
@@ -159,12 +160,12 @@ async function shutdown(signal) {
   try {
     await activityApi.close();
   } catch (error) {
-    console.error('Activity database shutdown failed', error);
+    console.error('Activity database shutdown failed', errorMetadata(error));
     process.exitCode = 1;
   }
   server.close(error => {
     if (error) {
-      console.error('Activity server shutdown failed', error);
+      console.error('Activity server shutdown failed', errorMetadata(error));
       process.exitCode = 1;
     }
   });

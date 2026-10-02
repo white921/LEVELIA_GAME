@@ -21,7 +21,6 @@ import {
 } from './game.js';
 import type { Guess, PlayingCard as Card } from './game.js';
 import { PlayingCard } from './PlayingCard.js';
-import { saveBestStreak } from './storage.js';
 
 type CardEffect = 'idle' | 'awakening' | 'erasing' | 'restoring';
 type FatePhase = 'idle' | 'active' | 'rewriting' | 'revealed' | 'resolved';
@@ -41,7 +40,7 @@ interface FinishSummary {
 }
 
 interface HighLowGameProps {
-  best: number;
+  best: number | null;
   onBestChange: (best: number) => void;
   accessToken: string | null;
   inDiscord: boolean;
@@ -114,7 +113,7 @@ export function HighLowGame({ best, onBestChange, accessToken, inDiscord, onWall
   }, []);
 
   const showError = useCallback((error: unknown) => {
-    console.error('High-low request failed', error);
+    console.error('High-low request failed', { statusCode: error instanceof HighLowApiError ? error.statusCode : null });
     const message = error instanceof HighLowApiError
       ? error.message
       : '通信に失敗しました。少し待ってからもう一度お試しください。';
@@ -134,6 +133,7 @@ export function HighLowGame({ best, onBestChange, accessToken, inDiscord, onWall
     try {
       const session = await fetchHighLowSession(accessToken);
       if (!isCurrentGeneration(generation)) return;
+      onBestChange(session.bestStreak);
       setWallet(session.wallet);
       if (!session.accountFound) {
         updateHand(null);
@@ -156,7 +156,7 @@ export function HighLowGame({ best, onBestChange, accessToken, inDiscord, onWall
       showError(error);
       setPhase('setup');
     }
-  }, [accessToken, showError, updateHand]);
+  }, [accessToken, onBestChange, showError, updateHand]);
 
   useEffect(() => {
     void loadSession();
@@ -299,15 +299,12 @@ export function HighLowGame({ best, onBestChange, accessToken, inDiscord, onWall
       setPrompt(result.hand.canCashOut
         ? `精算するか、次のカードを予想してください（${result.hand.multiplier}倍）`
         : promptFor(result.hand.currentCard));
-      if (event.result === 'win' && result.hand.streak > best) {
-        saveBestStreak(result.hand.streak);
-        onBestChange(result.hand.streak);
-      }
     }
+    onBestChange(result.bestStreak);
     await pause(result.settlement ? 650 : 0);
     if (!isCurrentGeneration(generation)) return;
     finishGame(result.settlement);
-  }, [best, finishGame, onBestChange, pause, resetFateEffects, updateHand]);
+  }, [finishGame, onBestChange, pause, resetFateEffects, updateHand]);
 
   const makeGuess = useCallback(async (guess: Guess) => {
     const active = handRef.current;
@@ -323,7 +320,7 @@ export function HighLowGame({ best, onBestChange, accessToken, inDiscord, onWall
       if (!isCurrentGeneration(generation)) return;
       await presentGuess(result, generation);
     } catch (error) {
-      if (error instanceof HighLowApiError && ['stale_hand_version', 'hand_finished'].includes(error.code)) {
+      if (error instanceof HighLowApiError && ['stale_hand_version', 'hand_finished', 'hand_expired'].includes(error.code)) {
         await loadSession();
       } else {
         showError(error);
@@ -348,7 +345,7 @@ export function HighLowGame({ best, onBestChange, accessToken, inDiscord, onWall
       if (!isCurrentGeneration(generation)) return;
       finishGame(result.settlement);
     } catch (error) {
-      if (error instanceof HighLowApiError && ['stale_hand_version', 'hand_finished'].includes(error.code)) {
+      if (error instanceof HighLowApiError && ['stale_hand_version', 'hand_finished', 'hand_expired'].includes(error.code)) {
         await loadSession();
       } else {
         showError(error);
@@ -430,7 +427,7 @@ export function HighLowGame({ best, onBestChange, accessToken, inDiscord, onWall
             <div className="score-item"><span className="score-label">賭け金</span><strong>{hand.wager.toLocaleString('ja-JP')}</strong></div>
             <div className="score-item score-item-featured"><span className="score-label">連勝</span><strong>{hand.streak}</strong></div>
             <div className="score-item"><span className="score-label">精算額</span><strong>{hand.potentialPayout.toLocaleString('ja-JP')}</strong></div>
-            <div className="score-item"><span className="score-label">最高</span><strong>{best}</strong></div>
+            <div className="score-item"><span className="score-label">最高</span><strong>{best ?? '—'}</strong></div>
           </div>
 
           <div className="table">

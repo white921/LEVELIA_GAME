@@ -1,5 +1,6 @@
 import { createPool } from 'mysql2/promise';
 import { ApiError } from './http.mjs';
+import { errorMetadata } from './safeLog.mjs';
 import {
   calculatePayout,
   cardFromId,
@@ -22,8 +23,8 @@ const MAX_INTEGER_WALLET = 2_147_483_647;
 const handColumns = `
   id, user_id, status, wager, streak, potential_payout, current_card,
   remaining_deck, rules_version, version, settlement_amount, settlement_reason,
-  CAST(UNIX_TIMESTAMP(last_heartbeat_at) * 1000 AS UNSIGNED) AS last_heartbeat_ms,
-  CAST(UNIX_TIMESTAMP(expires_at) * 1000 AS UNSIGNED) AS expires_ms`;
+  TIMESTAMPDIFF(MICROSECOND, '1970-01-01 00:00:00', last_heartbeat_at) DIV 1000 AS last_heartbeat_ms,
+  TIMESTAMPDIFF(MICROSECOND, '1970-01-01 00:00:00', expires_at) DIV 1000 AS expires_ms`;
 
 function parseJson(value) {
   return typeof value === 'string' ? JSON.parse(value) : value;
@@ -104,7 +105,7 @@ export function createHighLowStore(mysqlUrl, {
   function ensureWorker() {
     if (worker) return;
     worker = setInterval(() => {
-      void expireInactiveHands().catch(error => console.error('High-low expiration failed', error));
+      void expireInactiveHands().catch(error => console.error('High-low expiration failed', errorMetadata(error)));
     }, workerIntervalMs);
     worker.unref?.();
   }
@@ -300,6 +301,22 @@ export function createHighLowStore(mysqlUrl, {
     }
   }
 
+  async function readBestStreak(userId, connection = getPool()) {
+    const [rows] = await connection.execute(
+      `SELECT COALESCE(MAX(streak), 0) AS best_streak
+       FROM levelia_game_high_low_hands WHERE user_id = ?`,
+      [userId],
+    );
+    return Number(rows[0].best_streak);
+  }
+
+  function assertHandNotExpired(hand) {
+    const now = Date.now();
+    if (Number(hand.last_heartbeat_ms) + DISCONNECT_GRACE_MS <= now || Number(hand.expires_ms) <= now) {
+      throw new ApiError(409, 'hand_expired', 'ゲームの期限が切れました。状態を再読み込みします');
+    }
+  }
+
   async function guess({ userId, handId, guess: playerGuess, requestId, expectedVersion }) {
     ensureWorker();
     const connection = await getPool().getConnection();
@@ -307,17 +324,20 @@ export function createHighLowStore(mysqlUrl, {
       await connection.beginTransaction();
       let saved = await readCommand(connection, requestId, userId, 'guess');
       if (saved) {
+        const response = { ...saved, bestStreak: await readBestStreak(userId, connection) };
         await connection.commit();
-        return saved;
+        return response;
       }
       const hand = await selectHand(connection, handId, userId, true);
       if (!hand) throw new ApiError(404, 'hand_not_found', 'ゲームが見つかりません');
       saved = await readCommand(connection, requestId, userId, 'guess', true);
       if (saved) {
+        const response = { ...saved, bestStreak: await readBestStreak(userId, connection) };
         await connection.commit();
-        return saved;
+        return response;
       }
       if (hand.status !== 'active') throw new ApiError(409, 'hand_finished', 'このゲームはすでに終了しています');
+      assertHandNotExpired(hand);
       if (Number(hand.version) !== expectedVersion) {
         throw new ApiError(409, 'stale_hand_version', 'ゲーム状態が更新されています。画面を再読み込みしてください');
       }
@@ -352,6 +372,7 @@ export function createHighLowStore(mysqlUrl, {
         const response = {
           hand: null,
           event,
+          bestStreak: await readBestStreak(userId, connection),
           settlement: { reason: 'loss', payout: 0, wallet: null },
         };
         await saveCommand(connection, { requestId, userId, handId: hand.id, action: 'guess', response });
@@ -379,6 +400,7 @@ export function createHighLowStore(mysqlUrl, {
         const updatedHand = await selectHand(connection, hand.id, userId);
         response = { hand: toPublicHand(updatedHand), event, settlement: null };
       }
+      response.bestStreak = await readBestStreak(userId, connection);
       await saveCommand(connection, { requestId, userId, handId: hand.id, action: 'guess', response });
       await connection.commit();
       return response;
@@ -408,6 +430,7 @@ export function createHighLowStore(mysqlUrl, {
         return saved;
       }
       if (hand.status !== 'active') throw new ApiError(409, 'hand_finished', 'このゲームはすでに終了しています');
+      assertHandNotExpired(hand);
       if (Number(hand.version) !== expectedVersion) {
         throw new ApiError(409, 'stale_hand_version', 'ゲーム状態が更新されています。画面を再読み込みしてください');
       }
@@ -488,7 +511,7 @@ export function createHighLowStore(mysqlUrl, {
       [userId],
     );
     const account = accounts[0];
-    if (!account) return { accountFound: false, wallet: null, hand: null };
+    if (!account) return { accountFound: false, wallet: null, hand: null, bestStreak: 0 };
     const [rows] = await getPool().execute(
       `SELECT ${handColumns} FROM levelia_game_high_low_hands
        WHERE user_id = ? AND status = 'active' LIMIT 1`,
@@ -498,9 +521,9 @@ export function createHighLowStore(mysqlUrl, {
     if (hand && (Number(hand.last_heartbeat_ms) + DISCONNECT_GRACE_MS <= Date.now()
       || Number(hand.expires_ms) <= Date.now())) {
       await settleExpiredHand(hand.id);
-      return { accountFound: true, wallet: await readWallet(userId), hand: null };
+      return { accountFound: true, wallet: await readWallet(userId), hand: null, bestStreak: await readBestStreak(userId) };
     }
-    return { accountFound: true, wallet: String(account.wallet), hand: hand ? toPublicHand(hand) : null };
+    return { accountFound: true, wallet: String(account.wallet), hand: hand ? toPublicHand(hand) : null, bestStreak: await readBestStreak(userId) };
   }
 
   async function heartbeat({ userId, handId }) {
@@ -508,7 +531,8 @@ export function createHighLowStore(mysqlUrl, {
     const [result] = await getPool().execute(
       `UPDATE levelia_game_high_low_hands
        SET last_heartbeat_at = UTC_TIMESTAMP(3), updated_at = UTC_TIMESTAMP(3)
-       WHERE id = ? AND user_id = ? AND status = 'active' AND expires_at > UTC_TIMESTAMP(3)`,
+       WHERE id = ? AND user_id = ? AND status = 'active' AND expires_at > UTC_TIMESTAMP(3)
+         AND last_heartbeat_at > DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 5 MINUTE)`,
       [handId, userId],
     );
     if (result.affectedRows !== 1) throw new ApiError(409, 'hand_not_active', '進行中のゲームが見つかりません');
@@ -519,6 +543,7 @@ export function createHighLowStore(mysqlUrl, {
 
   return {
     readWallet,
+    readBestStreak,
     readSession,
     start,
     guess,

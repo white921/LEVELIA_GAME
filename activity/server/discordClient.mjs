@@ -10,15 +10,6 @@ async function readDiscordResponse(response) {
   }
 }
 
-function safeDiscordError(body) {
-  return {
-    error: typeof body?.error === 'string' ? body.error.slice(0, 80) : 'unknown',
-    description: typeof body?.error_description === 'string'
-      ? body.error_description.slice(0, 200)
-      : null,
-  };
-}
-
 export async function exchangeDiscordCode({ code, discordClientId, discordClientSecret, fetchImpl = fetch }) {
   const response = await fetchImpl(`${DISCORD_API_BASE}/oauth2/token`, {
     method: 'POST',
@@ -35,7 +26,6 @@ export async function exchangeDiscordCode({ code, discordClientId, discordClient
   if (!response.ok || typeof body?.access_token !== 'string') {
     console.warn('Discord token exchange rejected', {
       status: response.status,
-      ...safeDiscordError(body),
     });
     throw new ApiError(502, 'discord_token_exchange_failed', 'Discord authorization failed');
   }
@@ -52,14 +42,12 @@ export async function fetchCurrentDiscordUser(accessToken, fetchImpl = fetch) {
   if (response.status === 401 || response.status === 403) {
     console.warn('Discord user verification rejected', {
       status: response.status,
-      ...safeDiscordError(body),
     });
     throw new ApiError(401, 'discord_access_token_rejected', 'Discord access token was rejected');
   }
   if (!response.ok || typeof body?.id !== 'string' || !/^\d{17,20}$/.test(body.id)) {
     console.warn('Discord user verification failed', {
       status: response.status,
-      ...safeDiscordError(body),
     });
     throw new ApiError(502, 'discord_user_lookup_failed', 'Could not verify the Discord user');
   }

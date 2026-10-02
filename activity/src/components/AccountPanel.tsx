@@ -60,7 +60,7 @@ export function AccountPanel({ onSessionChange, balanceRefreshKey }: AccountPane
         ? `@${activeSession.user.username} と連携済み`
         : 'LEVELIAの口座が見つかりません');
     } catch (error) {
-      console.error('Balance lookup failed', error);
+      console.error('Balance lookup failed', { statusCode: error instanceof ActivityApiError ? error.statusCode : null });
       if (error instanceof ActivityApiError && error.statusCode === 401) {
         setSession(null);
         onSessionChange(null);
@@ -93,17 +93,20 @@ export function AccountPanel({ onSessionChange, balanceRefreshKey }: AccountPane
       setStatus(`@${activeSession.user.username} と連携済み`);
       await updateBalance(activeSession);
     } catch (error) {
-      console.error('Discord Activity connection failed', error);
+      console.error('Discord Activity connection failed', { stage: error instanceof DiscordActivityConnectionError ? error.stage : null });
       setVariant('error');
       onSessionChange(null);
       const connectionError = error instanceof DiscordActivityConnectionError ? error : null;
       const configurationPending = connectionError?.message === 'DISCORD_AUTH_NOT_CONFIGURED';
+      const accessDenied = connectionError?.message === '現在は開発者のみプレイできます';
       setName(configurationPending
         ? '残高連携の設定待ち'
-        : `Discord認証：${connectionError ? stageNames[connectionError.stage] : '不明'}で停止`);
+        : accessDenied ? '現在はテスト中です'
+          : `Discord認証：${connectionError ? stageNames[connectionError.stage] : '不明'}で停止`);
       setStatus(configurationPending
-        ? 'ゲームはそのまま遊べます'
-        : '再試行しても続く場合は、この表示を管理者へ伝えてください');
+        ? '運営者の設定が完了するとプレイできます'
+        : accessDenied ? '現在は開発者のみプレイできます'
+          : '再試行しても続く場合は、この表示を管理者へ伝えてください');
       setBalance('— LIA');
       setBusy(false);
     }

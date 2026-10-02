@@ -16,6 +16,7 @@ export interface HighLowHand {
 }
 
 export interface HighLowSessionResult {
+  bestStreak: number;
   accountFound: boolean;
   wallet: string | null;
   hand: HighLowHand | null;
@@ -44,6 +45,7 @@ export interface HighLowSettlement {
 }
 
 export interface HighLowGuessResult {
+  bestStreak: number;
   hand: HighLowHand | null;
   event: HighLowGuessEvent;
   settlement: HighLowSettlement | null;
@@ -87,6 +89,14 @@ function postJson<T>(accessToken: string, path: string, body?: object): Promise<
     headers: { ...authorization(accessToken), ...(body ? { 'Content-Type': 'application/json' } : {}) },
     ...(body ? { body: JSON.stringify(body) } : {}),
   }).then(readResponse<T>);
+}
+
+export async function fetchHighLowStats(accessToken: string): Promise<{ bestStreak: number }> {
+  const response = await fetch(apiPath('stats'), {
+    headers: authorization(accessToken),
+    cache: 'no-store',
+  });
+  return readResponse<{ bestStreak: number }>(response);
 }
 
 export async function fetchHighLowSession(accessToken: string): Promise<HighLowSessionResult> {

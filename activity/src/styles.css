@@ -23,6 +23,17 @@
 }
 
 * { box-sizing: border-box; }
+
+.legal-footer { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px 24px; padding: 24px 0; }
+.legal-footer > button { background: none; border: 0; padding: 4px; color: var(--ink-soft); font-size: .875rem; text-decoration: underline; text-underline-offset: .2em; cursor: pointer; }
+.legal-dialog { width: min(900px, calc(100% - 24px)); max-width: none; height: min(850px, 90dvh); max-height: 90dvh; padding: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); color: var(--ink); }
+.legal-dialog::backdrop { background: rgb(20 30 25 / .55); }
+.legal-dialog-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.legal-dialog-heading h2 { margin: 0; font-size: 1rem; }
+.legal-dialog-heading button { flex-shrink: 0; padding: 8px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper-warm); color: var(--ink); cursor: pointer; }
+.legal-dialog[open] { display: flex; flex-direction: column; }
+.legal-dialog iframe { display: block; width: 100%; flex: 1; min-height: 0; border: 0; }
+
 [hidden] { display: none !important; }
 
 html {
