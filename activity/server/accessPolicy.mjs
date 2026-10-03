@@ -15,7 +15,7 @@ export function createAccessPolicy(env = process.env) {
     mode,
     assertAllowed(userId) {
       if (mode !== 'public' && !allowed.has(userId)) {
-        throw new ApiError(403, 'activity_access_denied', '現在は開発者のみプレイできます');
+        throw new ApiError(403, 'activity_access_denied', '現在は許可されたテスト参加者のみプレイできます');
       }
     },
   };

@@ -3,7 +3,7 @@ import { randomInt } from 'node:crypto';
 export const HIGH_LOW_WAGERS = Object.freeze([100, 1_000, 10_000]);
 export const HIGH_LOW_MAX_STREAK = 5;
 export const HIGH_LOW_FATE_SHIFT_DENOMINATOR = 1_000;
-export const HIGH_LOW_RULES_VERSION = 1;
+export const HIGH_LOW_RULES_VERSION = 3;
 
 const suits = ['spades', 'hearts', 'diamonds', 'clubs'];
 const ranks = [
@@ -22,16 +22,19 @@ export function cardFromId(cardId) {
   return card;
 }
 
-export function createSecureDeck(randomIndex = upperBound => randomInt(upperBound)) {
-  const deck = [...cardsById.keys()];
-  for (let index = deck.length - 1; index > 0; index -= 1) {
-    const target = randomIndex(index + 1);
-    if (!Number.isInteger(target) || target < 0 || target > index) {
-      throw new RangeError('randomIndex returned an invalid deck index');
-    }
-    [deck[index], deck[target]] = [deck[target], deck[index]];
+const allCardIds = Object.freeze([...cardsById.keys()]);
+
+function choose(items, randomIndex) {
+  const index = randomIndex(items.length);
+  if (!Number.isInteger(index) || index < 0 || index >= items.length) {
+    throw new RangeError('randomIndex returned an invalid card index');
   }
-  return deck;
+  return items[index];
+}
+
+// Every draw samples the complete 52 cards independently, including repeats.
+export function drawRandomCard(randomIndex = upperBound => randomInt(upperBound)) {
+  return choose(allCardIds, randomIndex);
 }
 
 export function isActionableCard(cardId) {
@@ -39,14 +42,13 @@ export function isActionableCard(cardId) {
   return value > 2 && value < 14;
 }
 
-export function drawActionableCard(deck) {
+export function drawActionableCard(randomIndex) {
   const autoDrawnCards = [];
-  while (deck.length > 0) {
-    const cardId = deck.pop();
+  for (;;) {
+    const cardId = drawRandomCard(randomIndex);
     if (isActionableCard(cardId)) return { cardId, autoDrawnCards };
     autoDrawnCards.push(cardId);
   }
-  throw new Error('Deck ended before an actionable card was found');
 }
 
 export function compareCardIds(currentCardId, nextCardId) {
@@ -56,62 +58,35 @@ export function compareCardIds(currentCardId, nextCardId) {
   return next.value > current.value ? 'higher' : 'lower';
 }
 
-export function calculatePayout(wager, streak) {
-  const multipliers = new Map([[1, 15_000], [2, 20_000], [3, 30_000], [4, 40_000], [5, 60_000]]);
-  const basisPoints = multipliers.get(streak) ?? 0;
-  return Math.floor((wager * basisPoints) / 10_000);
-}
-
-export function payoutMultiplier(streak) {
-  return ({ 1: '1.5', 2: '2.0', 3: '3.0', 4: '4.0', 5: '6.0' })[streak] ?? '0.0';
-}
-
-export function nextWinOffer(wager, streak) {
-  const nextStreak = Math.min(streak + 1, HIGH_LOW_MAX_STREAK);
-  return {
-    payout: calculatePayout(wager, nextStreak),
-    multiplier: payoutMultiplier(nextStreak),
-  };
-}
-
 export function resolveServerGuess({
   currentCardId,
-  deck,
   guess,
   randomIndex = upperBound => randomInt(upperBound),
 }) {
   if (guess !== 'higher' && guess !== 'lower') throw new RangeError('guess must be higher or lower');
   if (!isActionableCard(currentCardId)) throw new Error('Current card must be actionable');
-  const nextDeck = [...deck];
-  const revealedCardId = nextDeck.pop();
-  if (!revealedCardId) throw new Error('The deck is empty');
+  const revealedCardId = drawRandomCard(randomIndex);
 
   let finalCardId = revealedCardId;
   let relation = compareCardIds(currentCardId, revealedCardId);
   let fateShifted = false;
   if (relation !== 'tie' && relation !== guess && randomIndex(HIGH_LOW_FATE_SHIFT_DENOMINATOR) === 0) {
-    const candidateIndexes = nextDeck.flatMap((cardId, index) =>
-      compareCardIds(currentCardId, cardId) === guess ? [index] : []);
-    if (candidateIndexes.length > 0) {
-      const replacementIndex = candidateIndexes[randomIndex(candidateIndexes.length)];
-      finalCardId = nextDeck[replacementIndex];
-      nextDeck[replacementIndex] = revealedCardId;
-      relation = guess;
-      fateShifted = true;
-    }
+    const candidates = allCardIds.filter(cardId => compareCardIds(currentCardId, cardId) === guess);
+    finalCardId = choose(candidates, randomIndex);
+    relation = guess;
+    fateShifted = true;
   }
 
   const result = relation === 'tie' ? 'tie' : relation === guess ? 'win' : 'loss';
   const autoDrawnCardIds = [];
   let currentAfterCardId = finalCardId;
   if (result !== 'loss' && !isActionableCard(finalCardId)) {
-    const drawn = drawActionableCard(nextDeck);
+    const drawn = drawActionableCard(randomIndex);
     currentAfterCardId = drawn.cardId;
     autoDrawnCardIds.push(...drawn.autoDrawnCards, drawn.cardId);
   }
 
   return {
-    deck: nextDeck,
     result,
     relation,
     revealedCardId,

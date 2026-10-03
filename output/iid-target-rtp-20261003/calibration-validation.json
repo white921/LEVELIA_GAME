@@ -1,0 +1,70 @@
+{
+  "modelId": "iid-behavior-engaged-20261003-v1",
+  "baselineRtpPercent": 102.58118179645447,
+  "formula": "coefficient = target percent / baseline percent; rounded to 1 ppm",
+  "targets": [
+    {
+      "target": 98,
+      "correctionPpm": 955341,
+      "sessions": 36000,
+      "games": 3598765,
+      "behaviorResponsiveEstimate": {
+        "id": "engaged",
+        "label": "中間・目標型が多い構成",
+        "populationShares": {
+          "protect": 0.15,
+          "balanced": 0.3,
+          "target": 0.2,
+          "chase": 0.15,
+          "thrill": 0.1,
+          "ev": 0.1
+        },
+        "turnoverShares": {
+          "protect": 0.048044222808763734,
+          "balanced": 0.3427787721092401,
+          "target": 0.10320961493270553,
+          "chase": 0.14680252002615424,
+          "thrill": 0.1115249839103777,
+          "ev": 0.24763988621275868
+        },
+        "rtp": 98.00874214430276,
+        "ci95HalfWidth": 0.01462642356779008,
+        "rawRtp": 97.93855864009731
+      },
+      "sensitivityMin": 97.29431943285879,
+      "sensitivityMax": 98.65628094648001
+    },
+    {
+      "target": 101,
+      "correctionPpm": 984586,
+      "sessions": 36000,
+      "games": 3546097,
+      "behaviorResponsiveEstimate": {
+        "id": "engaged",
+        "label": "中間・目標型が多い構成",
+        "populationShares": {
+          "protect": 0.15,
+          "balanced": 0.3,
+          "target": 0.2,
+          "chase": 0.15,
+          "thrill": 0.1,
+          "ev": 0.1
+        },
+        "turnoverShares": {
+          "protect": 0.04318337635723381,
+          "balanced": 0.34650749223214256,
+          "target": 0.09973127736473239,
+          "chase": 0.13422017766231864,
+          "thrill": 0.11339712884217365,
+          "ev": 0.2629605475413989
+        },
+        "rtp": 100.99837115671997,
+        "ci95HalfWidth": 0.015373401750199488,
+        "rawRtp": 101.12113021715395
+      },
+      "sensitivityMin": 100.25303174305603,
+      "sensitivityMax": 101.68442846060586
+    }
+  ],
+  "limitation": "Hypothetical population and behavior. Actual observed return is not guaranteed; payout changes can alter behavior. Sampling confidence intervals exclude model error."
+}

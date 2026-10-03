@@ -1,63 +1,32 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {
-  calculatePayout,
-  createSecureDeck,
-  drawActionableCard,
-  nextWinOffer,
-  resolveServerGuess,
-} from '../server/highLowRules.mjs';
+import { drawRandomCard, drawActionableCard, resolveServerGuess } from '../server/highLowRules.mjs';
+const samples = values => n => { const value = values.shift(); assert.ok(value >= 0 && value < n); return value; };
 
-test('creates a unique 52-card deck with an injected unbiased index source', () => {
-  const deck = createSecureDeck(() => 0);
-  assert.equal(deck.length, 52);
-  assert.equal(new Set(deck).size, 52);
+test('every independent draw has all 52 possibilities, including repeated identical cards', () => {
+  assert.equal(new Set(Array.from({length:52}, (_,i) => drawRandomCard(() => i))).size,52);
+  assert.equal(drawRandomCard(() => 7),'spades-9');
+  assert.equal(drawRandomCard(() => 7),'spades-9');
+  for(const value of [-1,52,NaN,1.5]) assert.throws(() => drawRandomCard(() => value));
+  const tie = resolveServerGuess({currentCardId:'spades-9',guess:'higher',randomIndex:()=>7});
+  assert.equal(tie.result,'tie'); assert.equal(tie.currentAfterCardId,'spades-9');
+  assert.equal('deck' in tie,false);
 });
 
-test('skips ace and two until the player receives an actionable card', () => {
-  const deck = ['clubs-9', 'hearts-2', 'spades-A'];
-  assert.deepEqual(drawActionableCard(deck), {
-    cardId: 'clubs-9',
-    autoDrawnCards: ['spades-A', 'hearts-2'],
-  });
-  assert.deepEqual(deck, []);
+test('skips ace and two using fresh independent draws', () => {
+  assert.deepEqual(drawActionableCard(samples([12,0,12,7])), {cardId:'spades-9', autoDrawnCards:['spades-A','spades-2','spades-A']});
 });
 
-test('resolves a guess and auto-draws after a revealed ace', () => {
-  const result = resolveServerGuess({
-    currentCardId: 'clubs-7',
-    deck: ['clubs-5', 'clubs-2', 'spades-A'],
-    guess: 'higher',
-    randomIndex: () => 999,
-  });
-  assert.equal(result.result, 'win');
-  assert.equal(result.revealedCardId, 'spades-A');
-  assert.deepEqual(result.autoDrawnCardIds, ['clubs-2', 'clubs-5']);
-  assert.equal(result.currentAfterCardId, 'clubs-5');
+test('resolves a guess and independently auto-draws after a revealed ace', () => {
+  const result=resolveServerGuess({currentCardId:'clubs-7',guess:'higher',randomIndex:samples([12,0,3])});
+  assert.equal(result.result,'win'); assert.equal(result.revealedCardId,'spades-A');
+  assert.deepEqual(result.autoDrawnCardIds,['spades-2','spades-5']); assert.equal(result.currentAfterCardId,'spades-5');
 });
 
-test('fate shift is server-side and swaps the losing card back into the deck', () => {
-  const samples = [0, 0];
-  const result = resolveServerGuess({
-    currentCardId: 'clubs-7',
-    deck: ['spades-Q', 'hearts-3'],
-    guess: 'higher',
-    randomIndex: () => samples.shift() ?? 0,
-  });
-  assert.equal(result.fateShifted, true);
-  assert.equal(result.result, 'win');
-  assert.equal(result.revealedCardId, 'hearts-3');
-  assert.equal(result.finalCardId, 'spades-Q');
-  assert.deepEqual(result.deck, ['hearts-3']);
-});
-
-test('uses the agreed payout table without floating point settlement', () => {
-  assert.deepEqual([1, 2, 3, 4, 5].map(streak => calculatePayout(10_000, streak)), [
-    15_000, 20_000, 30_000, 40_000, 60_000,
-  ]);
-});
-
-test('returns the next win payout after the player has something to cash out', () => {
-  assert.deepEqual(nextWinOffer(1_000, 1), { payout: 2_000, multiplier: '2.0' });
-  assert.deepEqual(nextWinOffer(10_000, 4), { payout: 60_000, multiplier: '6.0' });
+test('fate shift replaces a losing draw with a fresh uniformly chosen winning card', () => {
+  const result=resolveServerGuess({currentCardId:'clubs-7',guess:'higher',randomIndex:samples([1,0,0])});
+  assert.equal(result.fateShifted,true);assert.equal(result.result,'win');
+  assert.equal(result.revealedCardId,'spades-3');assert.equal(result.finalCardId,'spades-8');
+  const loss=resolveServerGuess({currentCardId:'clubs-7',guess:'higher',randomIndex:samples([1,999])});
+  assert.equal(loss.result,'loss');assert.equal(loss.fateShifted,false);
 });

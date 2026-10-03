@@ -1,9 +1,4 @@
--- actionsの外部キーで参照する履歴表示専用口座。
--- 既存残高は保持し、ゲームの賭け金・配当でもこの口座残高は更新しない。
-INSERT INTO accounts (user_id, user_name, wallet)
-VALUES (1552246348756025344, 'LEVELIA Game', 0)
-ON DUPLICATE KEY UPDATE
-  user_name = VALUES(user_name);
+-- accountsは既存のものを参照する。口座作成・ユーザー情報変更は行わない。
 
 CREATE TABLE IF NOT EXISTS levelia_game_high_low_hands (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,

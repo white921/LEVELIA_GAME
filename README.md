@@ -20,7 +20,7 @@ activity/
 └── test-server/              # APIテスト
 ```
 
-Discord Activityの山札・勝敗・賭け金・配当はサーバーを正とします。Discord APIが返した本人のIDだけを使用し、ブラウザが申告したユーザーIDやゲーム結果は信用しません。通常ブラウザでは画面確認だけを行い、ゲームはDiscord Activity内から実際のLIAを使ってプレイします。ブラウザへMySQL接続情報やDiscord Client Secretは渡しません。
+Discord Activityの抽選・勝敗・賭け金・配当はサーバーを正とします。Discord APIが返した本人のIDだけを使用し、ブラウザが申告したユーザーIDやゲーム結果は信用しません。通常ブラウザでは画面確認だけを行い、ゲームはDiscord Activity内から実際のLIAを使ってプレイします。ブラウザへMySQL接続情報やDiscord Client Secretは渡しません。
 
 ## 開発
 
@@ -65,7 +65,7 @@ npm run dev
 
 `PORT=3000`を設定し、Public NetworkingのTarget Portも`3000`にします。発行されたホスト名をDiscord Developer PortalのActivities → URL MappingsでPrefix `/` に割り当てます。
 
-Pre-deploy Commandには`npm run migrate`を設定します。マイグレーションは履歴表示専用の`LEVELIA Game`口座（`1552246348756025344`）がなければ残高0で作成し、既存口座の残高は変更しません。配当の取引履歴を表示するには、KARUMA側にも`high_low_bet`と`high_low_payout`の履歴定義が必要です。
+Pre-deploy Commandには`npm run migrate`を設定します。マイグレーションは専用のゲーム・配当設定テーブルを更新し、口座の作成やユーザー情報変更は行いません。履歴表示専用の`LEVELIA Game`口座（`1552246348756025344`）は事前に存在する必要があります。配当の取引履歴を表示するには、KARUMA側にも`high_low_bet`と`high_low_payout`の履歴定義が必要です。管理3ロール専用の目標還元率コマンドと配当計算は[ハイロー仕様](docs/high-low.md)を参照してください。
 
 Activityは`identify` scopeだけを要求します。残高取得時はブラウザが申告したユーザーIDを信用せず、Bearer tokenをDiscord APIの `/users/@me` で検証します。
 

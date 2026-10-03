@@ -5,6 +5,8 @@ import { AccountPanel } from './components/AccountPanel.js';
 import { isDiscordActivityContext } from './discord/discordActivity.js';
 import type { DiscordActivitySession } from './discord/discordActivity.js';
 import { fetchHighLowStats } from './games/high-low/api.js';
+import { WeeklyLeaderboard } from './games/high-low/WeeklyLeaderboard.js';
+import './games/high-low/weeklyLeaderboard.css';
 import { navigateTo, routeFromHash } from './navigation.js';
 import type { ActivityRoute } from './navigation.js';
 
@@ -13,7 +15,7 @@ const HighLowGame = lazy(async () => {
   return { default: module.HighLowGame };
 });
 
-function Header({ route, onOpenRules }: { route: ActivityRoute; onOpenRules: () => void }) {
+function Header({ route, onOpenRules, onOpenRanking }: { route: ActivityRoute; onOpenRules: () => void; onOpenRanking: () => void }) {
   const playing = route === 'high-low';
   return (
     <header className="site-header">
@@ -25,6 +27,7 @@ function Header({ route, onOpenRules }: { route: ActivityRoute; onOpenRules: () 
         </span>
       </a>
       <div className="header-actions">
+        {playing ? <button className="quiet-button ranking-button" type="button" aria-haspopup="dialog" onClick={onOpenRanking}>ランキング</button> : null}
         {playing ? <button className="quiet-button lobby-button" type="button" onClick={() => navigateTo('lobby')}>ロビー</button> : null}
         {playing ? <button className="quiet-button" type="button" aria-haspopup="dialog" onClick={onOpenRules}>遊び方</button> : null}
       </div>
@@ -103,9 +106,10 @@ function RulesDialog({ dialogRef }: { dialogRef: RefObject<HTMLDialogElement | n
           <li>100・1,000・10,000 LIAから賭け金を選びます。</li>
           <li>中央のカードを確認し、次が高ければHIGH、低ければLOWを選びます。</li>
           <li>正解後は現在倍率で精算するか、そのまま次を予想できます。</li>
-          <li>同じ数字は引き分けで連勝を維持し、5連勝すると6倍で強制精算します。</li>
+          <li>倍率は現在のカードとHIGH・LOWの選択で変わります。連勝するほど配当計算が有利になります。</li>
+          <li>同じ数字は引き分けで連勝と精算額を維持し、5連勝で自動精算します。</li>
           <li>最高連勝の記録はゲームをまたいで続きます。精算や引き分けでは途切れず、負けたときだけ連勝が途切れます。</li>
-          <li>カードは山札へ戻りません。残り札は表示しないため、自分で覚えてください。</li>
+          <li>カードは毎回52枚からランダムに選ばれます。同じカードが続けて出ることもあります。</li>
         </ol>
         <p>ジョーカーは使いません。Aが最大、2が最小です。切断後は5分間復帰でき、それを過ぎると1勝以上は自動精算、0勝は払い戻しなしで終了します。</p>
         <button className="dialog-action" value="close">ゲームに戻る</button>
@@ -154,7 +158,9 @@ export function App() {
     }));
   }, [accessToken]);
   const [balanceRefreshKey, setBalanceRefreshKey] = useState(0);
+  const refreshWallet = useCallback(() => setBalanceRefreshKey(key => key + 1), []);
   const rulesDialogRef = useRef<HTMLDialogElement>(null);
+  const [rankingOpen, setRankingOpen] = useState(false);
 
   useEffect(() => {
     if (!accessToken) {
@@ -184,7 +190,7 @@ export function App() {
   return (
     <>
       <div id="app-shell">
-        <Header route={route} onOpenRules={() => rulesDialogRef.current?.showModal()} />
+        <Header route={route} onOpenRules={() => rulesDialogRef.current?.showModal()} onOpenRanking={() => setRankingOpen(true)} />
         {route === 'lobby' ? <LobbyHeading /> : null}
         <AccountPanel onSessionChange={setActivitySession} balanceRefreshKey={balanceRefreshKey} />
         <main>
@@ -204,7 +210,8 @@ export function App() {
                     onBestChange={updateBest}
                     accessToken={activitySession?.accessToken ?? null}
                     inDiscord={isDiscordActivityContext()}
-                    onWalletChanged={() => setBalanceRefreshKey(key => key + 1)}
+                    onWalletChanged={refreshWallet}
+                    onOpenRanking={() => setRankingOpen(true)}
                   />
                 </Suspense>
               </motion.section>
@@ -213,6 +220,7 @@ export function App() {
         </main>
         <LegalDocuments />
         <RulesDialog dialogRef={rulesDialogRef} />
+        <WeeklyLeaderboard open={rankingOpen} onClose={() => setRankingOpen(false)} accessToken={accessToken} />
       </div>
     </>
   );

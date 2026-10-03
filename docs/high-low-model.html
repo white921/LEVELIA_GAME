@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>ハイ＆ロー｜新しい配当モデル・運営向けガイド</title>
+  <style>
+    :root{--paper:#f5f6f1;--white:#fff;--ink:#192d2a;--muted:#5c6f68;--green:#17634c;--lime:#d9ed9a;--line:#dce3da;--soft:#eaf1e8;--amber:#fff4dd}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--paper);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;font-size:15px;line-height:1.85}button,input,select{font:inherit}button,select,input{accent-color:var(--green)}button{cursor:pointer}a{color:inherit}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #b28b28;outline-offset:4px}button,select,input{min-height:44px}button{border:1px solid var(--line);border-radius:8px;padding:8px 16px;background:white;color:var(--ink)}button:hover{background:var(--soft)}.wrap{max-width:1100px;margin:auto;padding:0 36px}header{border-bottom:1px solid var(--line)}.masthead{height:78px;display:flex;align-items:center;justify-content:space-between;gap:16px}.brand{font-size:14px;font-weight:800;letter-spacing:.16em}.brand span{display:block;font-size:10px;font-weight:500;letter-spacing:.1em;color:var(--muted)}.doc-label{font-size:12px;color:var(--muted)}.hero{padding:62px 0 45px;display:grid;grid-template-columns:1.25fr .75fr;gap:52px;align-items:center}.eyebrow{font-size:11px;letter-spacing:.13em;font-weight:700;color:var(--green);margin:0 0 17px}h1{font-size:clamp(32px,4.2vw,48px);line-height:1.4;letter-spacing:-.035em;margin:0 0 22px}h1 span{color:var(--green)}.lead{color:var(--muted);max-width:540px;margin:0}.hero-stat{background:var(--ink);color:white;padding:28px 32px;border-radius:16px;position:relative;overflow:hidden}.hero-stat:after{content:"";position:absolute;width:160px;height:160px;border:1px solid #ffffff18;border-radius:50%;right:-65px;top:-60px;pointer-events:none}.hero-stat .label{font-size:13px;color:#d5e2d6}.big{font-size:90px;font-weight:600;line-height:1.3;letter-spacing:-.06em;font-variant-numeric:tabular-nums}.big span{font-size:30px;margin-left:5px;color:var(--lime)}.hero-stat p{font-size:12px;color:#d5e2d6;margin:9px 0 0;padding-top:14px;border-top:1px solid #ffffff25}.keyline{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:17px 0;display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.keyline div{font-size:13px}.keyline b{display:block;font-size:16px;margin-bottom:3px}.keyline span{color:var(--muted)}nav{display:flex;gap:25px;flex-wrap:wrap;padding:22px 0 3px;font-size:12px;color:var(--muted)}nav a{text-decoration:none}nav a:hover{color:var(--green)}section{padding:51px 0;border-bottom:1px solid var(--line);scroll-margin-top:20px}.section-head{display:flex;gap:16px;align-items:baseline;margin-bottom:24px}.num{color:var(--green);font-size:12px;font-weight:700;letter-spacing:.08em}h2{font-size:26px;line-height:1.5;letter-spacing:-.02em;margin:0}h3{font-size:17px;margin:0 0 10px}.intro{color:var(--muted);margin:-8px 0 26px}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:22px}.panel{background:white;border:1px solid var(--line);border-radius:12px;padding:26px}.panel p{margin:0;color:var(--muted)}.mini-label{font-size:11px;color:var(--green);font-weight:700;letter-spacing:.07em;margin-bottom:10px}.flow{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:24px 0 0;font-size:13px}.flow strong{display:block;background:var(--soft);border-radius:6px;padding:12px 15px}.flow .arrow{color:var(--muted)}.rule-note{font-size:12px;color:var(--muted);margin:18px 0 0}.target-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.target-controls label{font-size:13px;font-weight:600;margin-right:7px}.target-controls button[aria-pressed=true]{background:var(--green);border-color:var(--green);color:white}.simulation-label{font-size:11px;color:var(--muted);margin:9px 0 22px}.curve{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;align-items:end;margin-top:22px}.curve-item{display:flex;flex-direction:column;justify-content:flex-end;text-align:center}.curve-item .rate{font-size:23px;font-weight:700;letter-spacing:-.045em;font-variant-numeric:tabular-nums}.curve-item .rate small{font-size:12px;margin-left:2px}.bar{height:var(--height);background:#dce8d4;border-radius:6px 6px 0 0;margin-top:12px;display:flex;align-items:end;justify-content:center;padding:12px 5px;font-size:13px}.curve-item:last-child .bar{background:var(--green);color:white}.curve-caption{font-size:11px;color:var(--muted);margin-top:13px}.callout{border-left:3px solid var(--green);background:var(--soft);padding:16px 20px;margin-top:22px;font-size:13px}.callout strong{color:var(--green)}.equation{background:var(--ink);color:white;border-radius:12px;padding:26px 28px;margin-bottom:23px}.equation .mini-label{color:var(--lime)}.formula{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:20px;font-weight:600;line-height:1.7}.formula .operator{font-size:18px;font-weight:400;color:#abc0b6}.formula .highlight{color:var(--lime)}.equation p{margin:14px 0 0;font-size:12px;color:#d5e2d6}.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin:26px 0}.step{border-top:2px solid var(--line);padding-top:15px}.step b{font-size:14px;display:block;margin-bottom:8px}.step p{font-size:13px;color:var(--muted);margin:0}.calc{background:white;border:1px solid var(--line);border-radius:12px;overflow:hidden;display:grid;grid-template-columns:1fr 1fr}.calc-controls{padding:26px}.field{margin-top:16px}.field label{display:block;font-size:12px;font-weight:600;margin-bottom:6px}select{width:100%;background:white;border:1px solid #b9c7bb;border-radius:6px;padding:9px 11px;color:var(--ink)}.choice{display:flex;gap:8px}.choice button{flex:1}.choice button[aria-pressed=true]{background:var(--green);border-color:var(--green);color:white}.calc-result{padding:26px;background:var(--soft);display:flex;flex-direction:column;justify-content:center}.result-label{font-size:12px;color:var(--green);font-weight:600}.result-value{font-size:46px;font-weight:600;letter-spacing:-.04em;font-variant-numeric:tabular-nums;line-height:1.5}.result-value small{font-size:15px;letter-spacing:0}.result-meta{font-size:13px;color:var(--muted);margin:0 0 20px}.calc-math{font-size:13px;line-height:1.9;border-top:1px solid #c7d6c4;padding-top:17px;overflow-wrap:anywhere}.calc-math code{font-family:inherit;font-variant-numeric:tabular-nums}.legend{font-size:11px;color:var(--muted);margin-top:12px}details{margin-top:22px;border:1px solid var(--line);border-radius:9px;background:white;padding:16px 20px}summary{cursor:pointer;font-size:13px;font-weight:600;min-height:28px}details .detail-body{padding-top:14px;font-size:13px;color:var(--muted)}details p{margin:8px 0}code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.92em}.code-line{display:block;background:var(--paper);border-radius:6px;padding:12px 14px;overflow-wrap:anywhere;margin:10px 0;color:var(--ink)}.admin-list{padding-left:20px;margin:0;color:var(--muted);font-size:13px}.admin-list li+li{margin-top:10px}.caution{background:var(--amber);border:1px solid #e9dcb8;border-radius:12px;padding:24px 26px;margin-top:24px}.caution p{margin:0;font-size:13px;color:#635639}.caution h3{color:#635639;font-size:15px}.definition{font-size:17px;color:var(--ink);margin:14px 0!important;font-weight:600}.footer{padding:28px 0 36px;display:flex;gap:20px;justify-content:space-between;font-size:11px;color:var(--muted)}.footer p{margin:0}.print-button{font-size:12px;white-space:nowrap}
+    @media(max-width:760px){.wrap{padding:0 20px}.masthead{height:70px}.doc-label{font-size:10px}.hero{grid-template-columns:1fr;gap:26px;padding:35px 0 30px}h1{font-size:clamp(27px,7vw,36px)}.hero-stat{padding:22px 26px}.big{font-size:72px}.keyline{grid-template-columns:1fr;gap:15px}.keyline b{display:inline;margin-right:8px;font-size:14px}.grid2,.calc{grid-template-columns:1fr}.steps{grid-template-columns:1fr;gap:17px}.flow strong{padding:11px}.curve{gap:6px}.curve-item .rate{font-size:18px}.curve-item .rate small{font-size:10px}.bar{font-size:11px}section{padding:36px 0}h2{font-size:23px}.section-head{gap:11px}.panel{padding:21px}.formula{font-size:17px;gap:9px}.equation{padding:22px}.footer{flex-direction:column}nav{gap:16px}}
+    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+    @media print{body{background:white;font-size:11px}.wrap{max-width:none;padding:0}.masthead{height:52px}.hero{padding:25px 0;gap:26px;grid-template-columns:1.3fr .7fr}h1{font-size:30px}.big{font-size:58px}section{padding:23px 0;break-inside:avoid}.panel,.calc,.equation,.caution{break-inside:avoid}.hero-stat,.equation,.bar,.calc-result,.callout,.caution{-webkit-print-color-adjust:exact;print-color-adjust:exact}nav,.print-button{display:none}.target-controls button:not([aria-pressed=true]){display:none}.steps{gap:16px}.footer{padding-bottom:0}details{break-inside:avoid}}
+  </style>
+</head>
+<body>
+  <header><div class="wrap masthead"><div class="brand">LEVELIA<span>GAME / OPERATIONS GUIDE</span></div><div class="doc-label">ハイ＆ロー 配当モデル説明資料 · 2026.10.03</div></div></header>
+  <main class="wrap">
+    <div class="hero">
+      <div><p class="eyebrow">HIGH & LOW / PAYOUT MODEL</p><h1>挑戦の楽しさと、<br><span>還元率の調整を両立。</span></h1><p class="lead">カードの勝率に応じて配当を変え、連勝には少しずつ上乗せ。運営向けに、新しい配当モデルの仕組みをまとめました。</p></div>
+      <div class="hero-stat"><div class="label">運用の基準となる目標平均還元率</div><div class="big">100<span>%</span></div><p>想定した遊び方に基づく目標値です。<br>実際の払い戻しが必ず100%になるものではありません。</p></div>
+    </div>
+    <div class="keyline"><div><b>勝率に応じた配当</b><span>当たりにくい選択ほど高倍率</span></div><div><b>連勝で上乗せ</b><span>1勝から精算、5連勝で自動精算</span></div><div><b>運営が目標を調整</b><span>新しいゲームから設定を適用</span></div></div>
+    <nav aria-label="資料内の移動"><a href="#model">01 仕組み</a><a href="#returns">02 還元係数</a><a href="#calculation">03 配当の計算</a><a href="#operation">04 運営の設定</a></nav>
+
+    <section id="model"><div class="section-head"><span class="num">01</span><h2>配当は、2つの要素で決まる</h2></div>
+      <div class="grid2"><article class="panel"><div class="mini-label">FACTOR 1 / 勝率</div><h3>難しい予想ほど、高い倍率に。</h3><p>現在のカードとHIGH・LOWの選択から勝率を計算します。勝ったときに「1 ÷ 勝率」を累積倍率に掛けます。</p><div class="flow"><strong>当たりやすい</strong><span class="arrow">→</span><strong>低倍率</strong></div></article><article class="panel"><div class="mini-label">FACTOR 2 / 連勝数</div><h3>連勝を重ねるほど、係数を上乗せ。</h3><p>精算する時点の連勝数に応じて還元係数を適用します。続けるほど係数は上がりますが、外れると払い戻しはありません。</p><div class="flow"><strong>連勝が増える</strong><span class="arrow">→</span><strong>係数が上がる</strong></div></article></div>
+      <p class="rule-note">カードは毎回52枚から独立抽選。2が最小、Aが最大です。同じ数字は引き分けで、連勝数・累積倍率・精算額は変わりません。A・2が基準カードになった場合は自動で次のカードへ進みます。</p>
+    </section>
+
+    <section id="returns"><div class="section-head"><span class="num">02</span><h2>目標100%を、配当にどう反映する？</h2></div><p class="intro">補正前の推定平均還元率は約102.58%。配当全体を約0.974838倍にして、目標100%に合わせます。</p>
+      <div class="panel"><div class="target-controls" role="group" aria-label="説明用の目標還元率"><label>目標を比較</label><button type="button" data-target="98" aria-pressed="false">98%</button><button type="button" data-target="100" aria-pressed="true">100%〈基準〉</button><button type="button" data-target="101" aria-pressed="false">101%</button></div><p class="simulation-label">説明用の試算です。本番の設定は変更されません。下の計算例にも選択した目標を反映します。</p>
+        <h3 id="curve-title">目標100%の連勝別還元係数</h3><div class="curve" id="curve"></div><p class="curve-caption">棒の高さは連勝段階を示すイメージです。係数は表示時のみ小数点以下2桁に丸めています。</p>
+        <div class="callout"><strong>「平均還元率」と「還元係数」は別の数値です。</strong><br>平均還元率は全体の賭け金に対する払い戻しの割合。還元係数は、各ゲームの配当を計算するための値です。</div>
+      </div>
+    </section>
+
+    <section id="calculation"><div class="section-head"><span class="num">03</span><h2>受取額を、順番に計算する</h2></div>
+      <div class="equation"><div class="mini-label">PAYOUT FORMULA</div><div class="formula"><span>受取額</span><span class="operator">＝</span><span>賭け金</span><span class="operator">×</span><span>累積倍率</span><span class="operator">×</span><span class="highlight">精算時の還元係数</span></div><p>受取額は賭け金を含む総額です。最後に1 LIA未満を切り捨てます。</p></div>
+      <div class="steps"><div class="step"><b>1. 勝率を求める</b><p>引き分けを除き、敗北時の1/1,000の救済も含めた勝率を使います。</p></div><div class="step"><b>2. 勝つたびに倍率を積む</b><p>1倍から始めて、勝つたびに「1 ÷ その勝負の勝率」を掛け合わせます。</p></div><div class="step"><b>3. 精算時に係数を掛ける</b><p>その連勝数の還元係数を1回だけ適用します。勝つたびに係数を掛け続ける計算ではありません。</p></div></div>
+      <div class="calc"><div class="calc-controls"><div class="mini-label">TRY IT / 1勝で精算する例</div><h3>カードを変えて、配当を比較</h3><div class="field"><label for="wager">賭け金</label><select id="wager"><option value="100">100 LIA</option><option value="1000" selected>1,000 LIA</option><option value="10000">10,000 LIA</option></select></div><div class="field"><label for="rank">現在のカード</label><select id="rank"><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8" selected>8</option><option value="9">9</option><option value="10">10</option><option value="11">J</option><option value="12">Q</option><option value="13">K</option></select></div><div class="field"><label>予想</label><div class="choice" role="group" aria-label="予想する方向"><button type="button" data-guess="higher" aria-pressed="true">HIGH</button><button type="button" data-guess="lower" aria-pressed="false">LOW</button></div></div><p class="legend">勝った場合の受取額を試算します。実際の抽選や残高操作は行いません。</p></div>
+        <div class="calc-result" aria-live="polite" aria-atomic="true"><div class="result-label" id="result-label">目標100% / 1勝で精算したときの受取額</div><div class="result-value"><span id="payout">1,937</span> <small>LIA</small></div><p class="result-meta">利益 <strong id="profit">+937 LIA</strong>（受取額 − 賭け金）</p><div class="calc-math"><div>引き分けを除く勝率：<strong id="chance">50.05%</strong></div><div>勝利時の倍率：<strong id="multiplier">約1.998002倍</strong></div><div id="worked-formula"></div></div></div>
+      </div>
+      <details><summary>もう少し詳しく：勝率と連勝の計算式</summary><div class="detail-body"><p>現在の数字をrとします（J=11、Q=12、K=13、A=14）。勝つ数字の種類数Wは、HIGHなら14−r、LOWならr−2。負ける種類数Lは12−Wです。</p><code class="code-line">勝率 q = (1000 × W + L) ÷ 12000</code><p>引き分けは毎回1/13。残る12種類で勝敗を考え、通常なら負ける抽選の1/1,000が救済される分を加えます。カードが8ならHIGH・LOWともW=6、L=6なので、q=6006÷12000=0.5005です。</p><code class="code-line">2連勝の累積倍率 = (1 ÷ 1勝目のq) × (1 ÷ 2勝目のq)</code><p>各勝負のカードと選択方向に応じたqを使います。例えば目標100%で、2回とも基準カードが8の勝負に勝った場合、1,000 LIAの2連勝時受取額は次のとおりです。</p><code class="code-line">1,000 × (1 ÷ 0.5005)² × 0.97971219<br>= 約3,911.02 → 3,911 LIA</code><p>この2連勝例は目標100%の固定例です。計算では表示用に丸めた係数を使わず、累積倍率を分数のまま保持し、受取額の計算で最後に切り捨てます。</p></div></details>
+    </section>
+
+    <section id="operation"><div class="section-head"><span class="num">04</span><h2>還元率は、運用を見ながら調整できる</h2></div>
+      <div class="grid2"><div class="panel"><div class="mini-label">ADJUSTMENT / 補正の仕組み</div><h3>連勝の上乗せを保ち、全体を補正。</h3><p>目標値を補正前の推定平均還元率で割り、共通の補正係数を求めます。</p><code class="code-line">補正係数 = 目標(%) ÷ 102.58118179645447</code><p>補正係数は小数点以下6桁に丸めます。基準の連勝係数99.5 → 100.5 → 101.5 → 102.5 → 103.5%に、この補正係数を掛けます。</p><code class="code-line" id="correction-example">目標100% → 補正係数 ×0.974838</code></div><div class="panel"><div class="mini-label">CONTROL / 管理コマンド</div><h3>運営ロールから設定・確認。</h3><code class="code-line">/ハイロー還元率 設定 目標:100<br>/ハイロー還元率 確認</code><ul class="admin-list"><li>利用できるのは「英傑・皇帝・システム支配人」の3ロール。</li><li>変更は新しく開始するゲームから適用。進行中のゲームは開始時の設定を維持。</li><li>変更者・変更前後の設定は履歴に保存。</li></ul></div></div>
+      <div class="caution"><h3>目標100%は、全員の元本保証ではありません。</h3><p>実測の還元率は、次の式で確認します。</p><p class="definition">平均還元率 ＝ 払い戻し総額 ÷ 賭け金総額 × 100</p><p>目標100%の基準は、仮定したプレイヤー行動によるシミュレーションです。実際の精算タイミング、賭け金構成、配当変更後の行動によって結果は変わります。短期間の結果は高額配当にも左右されるため、運用実績を確認しながら調整します。</p></div>
+      <details><summary>試算の前提・資料の位置づけ</summary><div class="detail-body"><p>基準は独立抽選版の行動シミュレーション（36,000セッション・3,510,601ゲーム）における「中間・目標型が多い構成」。賭け金総額で重み付けした推定値を使用しています。実際の利用者データに適合させた行動モデルではありません。</p><p>整数への切り捨てや補正係数の丸めがあるため、目標値と計算結果にも微小な差が生じます。また、実運用には口座上限があり、過去の上限なしシミュレーションと条件が異なります。</p><p>この資料は、目標100%を基準にした運営向け説明です。現在の本番設定・公開状況を示すものではありません。仕様参照：docs/high-low.md、highLowPayout.mjs、highLowCalibration.mjs。</p></div></details>
+    </section>
+  </main>
+  <footer class="wrap footer"><div><p>LEVELIA GAME · ハイ＆ロー 運営向けガイド</p><p>単体HTML / オフライン対応 / 計算機は説明用</p></div><button type="button" class="print-button" id="print">印刷 / PDFに保存</button></footer>
+  <noscript><p class="wrap">計算機と係数の比較を利用するにはJavaScriptを有効にしてください。目標100%の係数は、1〜5勝で約97.00%、97.97%、98.95%、99.92%、100.90%です。</p></noscript>
+  <script>
+    'use strict';
+    const BASELINE = 102.58118179645447;
+    const BPS = [9950, 10050, 10150, 10250, 10350];
+    let target = 100;
+    let guess = 'higher';
+    const el = id => document.getElementById(id);
+    const fmt = value => value.toLocaleString('ja-JP');
+    function render() {
+      const correctionPpm = Math.round(target / BASELINE * 1000000);
+      const correction = correctionPpm / 1000000;
+      el('curve-title').textContent = `目標${target}%の連勝別還元係数`;
+      el('curve').innerHTML = BPS.map((bps, i) => `<div class="curve-item"><div class="rate">${(bps / 100 * correction).toFixed(2)}<small>%</small></div><div class="bar" style="--height:${60 + i * 19}px">${i + 1}連勝</div></div>`).join('');
+      el('correction-example').textContent = `目標${target}% → 補正係数 ×${correction.toFixed(6)}`;
+      const rank = Number(el('rank').value);
+      const wager = Number(el('wager').value);
+      const wins = guess === 'higher' ? 14 - rank : rank - 2;
+      const qNumerator = wins * 1000 + 12 - wins;
+      const q = qNumerator / 12000;
+      // Exact integer arithmetic, matching the server's one-win payout calculation.
+      const payout = Number(BigInt(wager) * 12000n * 9950n * BigInt(correctionPpm) / (BigInt(qNumerator) * 10000n * 1000000n));
+      el('result-label').textContent = `目標${target}% / 1勝で精算したときの受取額`;
+      el('payout').textContent = fmt(payout);
+      el('profit').textContent = `${payout - wager >= 0 ? '+' : ''}${fmt(payout - wager)} LIA`;
+      el('chance').textContent = `${Number((q * 100).toFixed(4))}%`;
+      el('multiplier').textContent = `約${(1 / q).toFixed(6)}倍`;
+      el('worked-formula').textContent = `${fmt(wager)} × (12,000 ÷ ${fmt(qNumerator)}) × ${(0.995 * correction).toFixed(8)} → ${fmt(payout)} LIA`;
+    }
+    document.querySelectorAll('[data-target]').forEach(button => button.addEventListener('click', () => {
+      target = Number(button.dataset.target);
+      document.querySelectorAll('[data-target]').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
+      render();
+    }));
+    document.querySelectorAll('[data-guess]').forEach(button => button.addEventListener('click', () => {
+      guess = button.dataset.guess;
+      document.querySelectorAll('[data-guess]').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
+      render();
+    }));
+    el('wager').addEventListener('change', render);
+    el('rank').addEventListener('change', render);
+    el('print').addEventListener('click', () => window.print());
+    render();
+  </script>
+</body>
+</html>

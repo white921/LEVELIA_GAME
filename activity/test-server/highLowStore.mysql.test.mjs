@@ -1,23 +1,25 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { randomUUID } from 'node:crypto';
+import { correctionForTarget, RTP_CALIBRATION_ID } from '../server/highLowCalibration.mjs';
+import { migrateHighLow } from '../server/highLowMigrations.mjs';
 import { createConnection } from 'mysql2/promise';
 import { createHighLowStore, LEVELIA_GAME_USER_ID } from '../server/highLowStore.mjs';
 
 const mysqlUrl = process.env.TEST_MYSQL_URL;
 const userId = '123456789012345678';
+let nextDraw = 7;
+const randomIndex = n => n === 52 ? nextDraw : n - 1;
 
 test('wager and payout are atomic, idempotent, and never move the LEVELIA Game wallet', {
   skip: !mysqlUrl,
 }, async () => {
-  const connection = await createConnection({ uri: mysqlUrl, multipleStatements: true });
-  const migrationPath = fileURLToPath(new URL('../sql/20261002_create_high_low.sql', import.meta.url));
-  const migration = await readFile(migrationPath, 'utf8');
+  const connection = await createConnection({ uri: mysqlUrl, multipleStatements: true, supportBigNumbers: true, bigNumberStrings: true });
   try {
     await connection.query(`
       SET FOREIGN_KEY_CHECKS = 0;
+      DROP TABLE IF EXISTS levelia_game_high_low_setting_changes;
+      DROP TABLE IF EXISTS levelia_game_high_low_settings;
       DROP TABLE IF EXISTS levelia_game_high_low_ledger;
       DROP TABLE IF EXISTS levelia_game_high_low_commands;
       DROP TABLE IF EXISTS levelia_game_high_low_hands;
@@ -57,16 +59,16 @@ test('wager and payout are atomic, idempotent, and never move the LEVELIA Game w
       'INSERT INTO accounts (user_id, user_name, wallet) VALUES (?, ?, ?), (?, ?, ?)',
       [userId, 'player', 20_000, LEVELIA_GAME_USER_ID, 'old name', 777_777],
     );
-    await connection.query(migration);
+    await migrateHighLow(connection);
 
     const [seededAccounts] = await connection.execute(
       'SELECT user_name, wallet FROM accounts WHERE user_id = ?',
       [LEVELIA_GAME_USER_ID],
     );
-    assert.equal(seededAccounts[0].user_name, 'LEVELIA Game');
+    assert.equal(seededAccounts[0].user_name, 'old name'); // Migration must not edit account identity.
     assert.equal(seededAccounts[0].wallet, 777_777);
 
-    const store = createHighLowStore(mysqlUrl, { randomIndex: () => 0, workerIntervalMs: 60_000 });
+    const store = createHighLowStore(mysqlUrl, { randomIndex, workerIntervalMs: 60_000 });
     try {
       assert.equal(await store.readBestStreak(userId), 0);
       const startRequestId = '123e4567-e89b-42d3-a456-426614174001';
@@ -133,8 +135,8 @@ test('wager and payout are atomic, idempotent, and never move the LEVELIA Game w
       // Existing DB history and active hands count, without any browser score import.
       await connection.execute(
         `UPDATE levelia_game_high_low_hands
-         SET streak = 4, current_card = 'spades-5', remaining_deck = ? WHERE id = ?`,
-        [JSON.stringify(['hearts-9']), successful.hand.id],
+         SET streak = 4, current_card = 'spades-5' WHERE id = ?`,
+        [successful.hand.id],
       );
       assert.equal(await store.readBestStreak(userId), 5);
       const finalGuess = {
@@ -166,13 +168,15 @@ test('wager and payout are atomic, idempotent, and never move the LEVELIA Game w
       const next = await store.start({ userId, wager: 100, requestId: '123e4567-e89b-42d3-a456-426614174006' });
       await connection.execute(
         `UPDATE levelia_game_high_low_hands
-         SET streak = 2, current_card = 'spades-5', remaining_deck = ? WHERE id = ?`,
-        [JSON.stringify(['hearts-3']), next.hand.id],
+         SET streak = 2, current_card = 'spades-5' WHERE id = ?`,
+        [next.hand.id],
       );
+      nextDraw = 1;
       const lost = await store.guess({
         userId, handId: next.hand.id, guess: 'higher',
         requestId: '123e4567-e89b-42d3-a456-426614174007', expectedVersion: next.hand.version,
       });
+      nextDraw = 7;
       assert.equal(lost.event.result, 'loss');
       assert.equal(lost.bestStreak, 8);
       assert.equal(await store.readBestStreak(userId), 8);
@@ -204,6 +208,8 @@ test('wager and payout are atomic, idempotent, and never move the LEVELIA Game w
 
       await verifyCrossGameStreaks(connection, store);
       await verifySubAccountException(connection, store);
+      await verifyExpirationIsolation(connection, store);
+      await verifyProgressivePayouts(connection);
     } finally {
       await store.close();
     }
@@ -211,6 +217,48 @@ test('wager and payout are atomic, idempotent, and never move the LEVELIA Game w
     await connection.end();
   }
 });
+
+async function verifyExpirationIsolation(connection, store) {
+  const blocked = '444444444444444444';
+  const payable = '555555555555555555';
+  await connection.execute('INSERT INTO accounts (user_id, user_name, wallet) VALUES (?, ?, ?), (?, ?, ?)',
+    [blocked, 'blocked-payout', 1000, payable, 'payable', 1000]);
+  const blockedHand = await store.start({ userId: blocked, wager: 100, requestId: randomUUID() });
+  const payableHand = await store.start({ userId: payable, wager: 100, requestId: randomUUID() });
+  await connection.execute('UPDATE accounts SET wallet = 2147483647 WHERE user_id = ?', [blocked]);
+  await connection.execute(
+    `UPDATE levelia_game_high_low_hands SET streak = 1, potential_payout = 150,
+     last_heartbeat_at = DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 6 MINUTE) WHERE id IN (?, ?)`,
+    [blockedHand.hand.id, payableHand.hand.id],
+  );
+  await store.expireInactiveHands();
+  assert.equal(await store.readWallet(blocked), '2147483647');
+  assert.equal(await store.readWallet(payable), '1050');
+  const [hands] = await connection.execute(
+    'SELECT status FROM levelia_game_high_low_hands WHERE id IN (?, ?) ORDER BY id',
+    [blockedHand.hand.id, payableHand.hand.id],
+  );
+  assert.deepEqual(hands.map(hand => hand.status), ['active', 'auto_cashed_out']);
+  const [credits] = await connection.execute(
+    "SELECT user_id, COUNT(*) AS count FROM levelia_game_high_low_ledger WHERE user_id IN (?, ?) AND kind = 'auto_payout_credit' GROUP BY user_id",
+    [blocked, payable],
+  );
+  assert.equal(credits.length, 1);
+  assert.equal(String(credits[0].user_id), payable);
+  assert.equal(Number(credits[0].count), 1);
+  // Once the cause is resolved, the failed hand is settled exactly once.
+  await connection.execute('UPDATE accounts SET wallet = 900 WHERE user_id = ?', [blocked]);
+  await store.expireInactiveHands();
+  await store.expireInactiveHands();
+  assert.equal(await store.readWallet(blocked), '1050');
+  assert.equal(await store.readWallet(payable), '1050');
+  assert.equal(await store.readWallet(LEVELIA_GAME_USER_ID), '777777');
+  const [actions] = await connection.execute(
+    "SELECT COUNT(*) AS count FROM actions WHERE command_name = 'high_low_payout' AND to_user_id IN (?, ?)",
+    [blocked, payable],
+  );
+  assert.equal(Number(actions[0].count), 2);
+}
 
 async function verifySubAccountException(connection, store) {
   const allowedSub = '1551725849009586270';
@@ -242,8 +290,8 @@ async function verifySubAccountException(connection, store) {
   assert.equal(await store.readWallet(userId), mainWalletBefore);
   await assert.rejects(store.start({ ...input, requestId: randomUUID() }), { code: 'active_hand_exists' });
   await connection.execute(
-    "UPDATE levelia_game_high_low_hands SET current_card = 'spades-5', remaining_deck = ? WHERE id = ?",
-    [JSON.stringify(['hearts-9']), started.hand.id],
+    "UPDATE levelia_game_high_low_hands SET current_card = 'spades-5' WHERE id = ?",
+    [started.hand.id],
   );
   const won = await store.guess({
     userId: allowedSub, handId: started.hand.id, expectedVersion: started.hand.version,
@@ -253,7 +301,7 @@ async function verifySubAccountException(connection, store) {
   const settled = await store.cashout({
     userId: allowedSub, handId: won.hand.id, expectedVersion: won.hand.version, requestId: randomUUID(),
   });
-  assert.equal(settled.settlement.wallet, '1050');
+  assert.equal(settled.settlement.wallet, String(900 + Math.floor(100 * .995 * 12000 / 9003)));
   assert.equal(await store.readWallet(userId), mainWalletBefore);
   assert.equal(await store.readWallet(LEVELIA_GAME_USER_ID), '777777');
   const [subRows] = await connection.execute('SELECT sub_user_id FROM sub_accounts WHERE main_user_id = ?', [userId]);
@@ -266,17 +314,19 @@ async function verifyCrossGameStreaks(connection, store) {
     [player, 'cross-game-player', 20_000]);
   let hand;
   async function start() {
+    nextDraw = 7;
     const result = await store.start({ userId: player, wager: 100, requestId: randomUUID() });
     hand = result.hand;
     assert.equal(hand.streak, 0);
-    assert.equal(hand.nextWinPayout, 150);
+    assert.equal(hand.rulesVersion, 3);
+    assert.ok(hand.nextWinOffers);
   }
   async function guess(result) {
     // Fix only the draw, allowing production code to update wins and payouts.
-    const card = { win: 'hearts-9', tie: 'hearts-5', loss: 'hearts-3' }[result];
+    nextDraw = { win: 7, tie: 3, loss: 1 }[result];
     await connection.execute(
-      "UPDATE levelia_game_high_low_hands SET current_card = 'spades-5', remaining_deck = ? WHERE id = ?",
-      [JSON.stringify([card]), hand.id],
+      "UPDATE levelia_game_high_low_hands SET current_card = 'spades-5' WHERE id = ?",
+      [hand.id],
     );
     const input = { userId: player, handId: hand.id, guess: 'higher', expectedVersion: hand.version, requestId: randomUUID() };
     const response = await store.guess(input);
@@ -293,7 +343,7 @@ async function verifyCrossGameStreaks(connection, store) {
     if (win === 5) {
       assert.equal(hand, null);
       assert.equal(result.settlement.reason, 'max_streak');
-      assert.equal(result.settlement.payout, 600);
+      assert.equal(result.settlement.payout, Number(100n * 10350n * 12000n**5n / (10000n * 9003n**5n)));
     }
   }
   await start();
@@ -303,7 +353,7 @@ async function verifyCrossGameStreaks(connection, store) {
   assert.equal(hand.streak, 1);
   assert.equal((await guess('win')).bestStreak, 7);
   const cashout = await store.cashout({ userId: player, handId: hand.id, expectedVersion: hand.version, requestId: randomUUID() });
-  assert.equal(cashout.settlement.payout, 200); // Uses 2 wins in this game, not 7.
+  assert.equal(cashout.settlement.payout, Number(100n * 10050n * 12000n**2n / (10000n * 9003n**2n))); // Uses 2 wins in this game, not 7.
   await start();
   assert.equal((await guess('win')).bestStreak, 8);
   await connection.execute('UPDATE levelia_game_high_low_hands SET last_heartbeat_at = DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 6 MINUTE) WHERE id = ?', [hand.id]);
@@ -326,4 +376,98 @@ async function verifyCrossGameStreaks(connection, store) {
   } finally {
     await restarted.close();
   }
+}
+
+async function verifyProgressivePayouts(connection) {
+  const coefficient98 = correctionForTarget(980000), coefficient101 = correctionForTarget(1010000);
+  const player = '888888888888888888', actorId = '649438093996195851';
+  await connection.execute('INSERT INTO accounts (user_id, user_name, wallet) VALUES (?, ?, ?)', [player, 'progressive', 1_000_000]);
+  const store = createHighLowStore(mysqlUrl, { randomIndex, workerIntervalMs: 600_000 });
+  let hand;
+  const start = async () => {
+    nextDraw = 7;
+    hand = (await store.start({ userId: player, wager: 10000, requestId: randomUUID() })).hand;
+    return hand;
+  };
+  const stored = async () => {
+    const [[row]] = await connection.execute('SELECT payout_state, potential_payout, remaining_deck, version FROM levelia_game_high_low_hands WHERE id = ?', [hand.id]);
+    return { ...row, payout_state: typeof row.payout_state === 'string' ? JSON.parse(row.payout_state) : row.payout_state };
+  };
+  const setDraw = async rank => {
+    nextDraw = rank - 2;
+    await connection.execute("UPDATE levelia_game_high_low_hands SET current_card = 'spades-7' WHERE id = ?", [hand.id]);
+    hand = (await store.readSession(player)).hand;
+  };
+  const guess = async () => {
+    const input = { userId: player, handId: hand.id, guess: 'higher', expectedVersion: hand.version, requestId: randomUUID() };
+    const result = await store.guess(input);
+    assert.deepEqual(await store.guess(input), result);
+    hand = result.hand;
+    return result;
+  };
+  try {
+    const change = { actorId, requestId: '1555555555555555501', targetRtpPpm: 980000 };
+    const changed = await store.setTargetRtp(change);
+    assert.equal(changed.calibrationId, RTP_CALIBRATION_ID);
+    assert.equal((await store.readPayoutConfig()).targetRtpPpm, 980000);
+    await start();
+    assert.equal((await stored()).payout_state.correctionPpm, coefficient98);
+    await setDraw(9);
+    assert.equal((await stored()).remaining_deck, null);
+    const offered = hand.nextWinOffers.higher.payout;
+    assert.equal(offered, Number(10000n * 9950n * BigInt(coefficient98) * 12000n / (10000n * 1000000n * 7005n)));
+    await guess(); assert.equal(hand.potentialPayout, offered);
+    const fairAfterWin = (await stored()).payout_state;
+    await setDraw(7);
+    assert.equal((await guess()).event.result, 'tie');
+    assert.equal(hand.potentialPayout, offered);
+    assert.deepEqual((await stored()).payout_state, fairAfterWin);
+
+    await store.setTargetRtp({ actorId, requestId: '1555555555555555502', targetRtpPpm: 1010000 });
+    assert.deepEqual(await store.setTargetRtp(change), changed); // An old delivery cannot revert newer settings.
+    assert.equal((await store.readPayoutConfig()).correctionPpm, coefficient101);
+    await assert.rejects(store.setTargetRtp({ ...change, targetRtpPpm: 990000 }), { code: 'request_id_reused' });
+    await migrateHighLow(connection); // Repeat migrations preserve settings and active fair state.
+    assert.equal((await store.readPayoutConfig()).correctionPpm, coefficient101);
+    assert.deepEqual((await stored()).payout_state, fairAfterWin);
+    await setDraw(9);
+    const secondOffer = hand.nextWinOffers.higher.payout;
+    await guess(); assert.equal(hand.potentialPayout, secondOffer);
+    assert.equal((await stored()).payout_state.correctionPpm, coefficient98);
+    const cashInput = { userId: player, handId: hand.id, expectedVersion: hand.version, requestId: randomUUID() };
+    const cashed = await store.cashout(cashInput);
+    assert.equal(cashed.settlement.payout, secondOffer);
+    assert.deepEqual(await store.cashout(cashInput), cashed);
+    assert.equal(cashed.settlement.wallet, String(990000 + secondOffer));
+
+    await start(); assert.equal((await stored()).payout_state.correctionPpm, coefficient101);
+    for (let n = 1; n <= 5; n++) {
+      await setDraw(9);
+      const offer = hand.nextWinOffers.higher.payout;
+      const result = await guess();
+      if (n === 5) { assert.equal(result.settlement.reason, 'max_streak'); assert.equal(result.settlement.payout, offer); }
+      else assert.equal(hand.potentialPayout, offer);
+    }
+    await start();
+    await setDraw(3); // Lose without fate shift.
+    const loss = await guess(); assert.equal(loss.event.result, 'loss'); assert.equal(loss.settlement.payout, 0);
+
+    await start(); await setDraw(9); await guess();
+    const expiryPayout = hand.potentialPayout;
+    const walletBeforeExpiry = Number(await store.readWallet(player));
+    await connection.execute('UPDATE levelia_game_high_low_hands SET last_heartbeat_at = DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 6 MINUTE) WHERE id = ?', [hand.id]);
+    assert.equal((await store.readSession(player)).hand, null);
+    assert.equal(Number(await store.readWallet(player)), walletBeforeExpiry + expiryPayout);
+    assert.equal((await store.readSession(player)).hand, null);
+    assert.equal(Number(await store.readWallet(player)), walletBeforeExpiry + expiryPayout);
+
+    await start(); await setDraw(9);
+    const before = await stored();
+    await connection.execute('UPDATE accounts SET wallet = 2147483647 WHERE user_id = ?', [player]);
+    await assert.rejects(store.guess({ userId: player, handId: hand.id, guess: 'higher', expectedVersion: hand.version, requestId: randomUUID() }), { code: 'wallet_limit_exceeded' });
+    assert.deepEqual(await stored(), before); // No card is consumed for an unpayable offer.
+    assert.equal(await store.readWallet(LEVELIA_GAME_USER_ID), '777777');
+    const [[audit]] = await connection.execute('SELECT COUNT(*) AS n FROM levelia_game_high_low_setting_changes');
+    assert.equal(Number(audit.n), 2);
+  } finally { await store.close(); }
 }

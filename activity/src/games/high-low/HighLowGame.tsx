@@ -8,6 +8,7 @@ import {
   guessHighLow,
   heartbeatHighLow,
   HighLowApiError,
+  isUncertainHighLowError,
   startHighLow,
 } from './api.js';
 import type {
@@ -24,7 +25,7 @@ import { PlayingCard } from './PlayingCard.js';
 
 type CardEffect = 'idle' | 'awakening' | 'erasing' | 'restoring';
 type FatePhase = 'idle' | 'active' | 'rewriting' | 'revealed' | 'resolved';
-type ViewPhase = 'loading' | 'setup' | 'playing';
+type ViewPhase = 'loading' | 'setup' | 'playing' | 'recovery';
 
 interface Banner {
   kicker: string;
@@ -45,6 +46,7 @@ interface HighLowGameProps {
   accessToken: string | null;
   inDiscord: boolean;
   onWalletChanged: () => void;
+  onOpenRanking?: () => void;
 }
 
 const WAGERS = [100, 1_000, 10_000] as const;
@@ -76,7 +78,7 @@ function formatLia(value: number | string): string {
   }
 }
 
-export function HighLowGame({ best, onBestChange, accessToken, inDiscord, onWalletChanged }: HighLowGameProps) {
+export function HighLowGame({ best, onBestChange, accessToken, inDiscord, onWalletChanged, onOpenRanking }: HighLowGameProps) {
   const reducedMotion = useReducedMotion() ?? false;
   const [phase, setPhase] = useState<ViewPhase>('loading');
   const [hand, setHand] = useState<HighLowHand | null>(null);
@@ -121,13 +123,20 @@ export function HighLowGame({ best, onBestChange, accessToken, inDiscord, onWall
   }, []);
 
   const loadSession = useCallback(async () => {
+    const generation = ++generationRef.current;
+    // Loading owns the operation lock after invalidating any old animation.
+    busyRef.current = true;
+    setBusy(true);
+    updateHand(null);
+    resetFateEffects();
+    setSummary(null);
     if (!accessToken) {
-      updateHand(null);
       setWallet(null);
       setPhase('setup');
+      busyRef.current = false;
+      setBusy(false);
       return;
     }
-    const generation = ++generationRef.current;
     setPhase('loading');
     setErrorMessage(null);
     try {
@@ -135,6 +144,7 @@ export function HighLowGame({ best, onBestChange, accessToken, inDiscord, onWall
       if (!isCurrentGeneration(generation)) return;
       onBestChange(session.bestStreak);
       setWallet(session.wallet);
+      onWalletChanged();
       if (!session.accountFound) {
         updateHand(null);
         setErrorMessage('LEVELIAの口座が見つかりません。');
@@ -154,9 +164,15 @@ export function HighLowGame({ best, onBestChange, accessToken, inDiscord, onWall
     } catch (error) {
       if (!isCurrentGeneration(generation)) return;
       showError(error);
-      setPhase('setup');
+      // Do not offer a fresh wager while the previous command is unconfirmed.
+      setPhase('recovery');
+    } finally {
+      if (isCurrentGeneration(generation)) {
+        busyRef.current = false;
+        setBusy(false);
+      }
     }
-  }, [accessToken, onBestChange, showError, updateHand]);
+  }, [accessToken, onBestChange, onWalletChanged, resetFateEffects, showError, updateHand]);
 
   useEffect(() => {
     void loadSession();
@@ -169,8 +185,12 @@ export function HighLowGame({ best, onBestChange, accessToken, inDiscord, onWall
   useEffect(() => {
     if (!accessToken || !hand) return undefined;
     const interval = window.setInterval(() => {
+      const generation = generationRef.current;
       void heartbeatHighLow(accessToken, hand.id).catch(error => {
-        if (error instanceof HighLowApiError && error.statusCode === 409) void loadSession();
+        // A settled hand may return 409 while its result is still being shown.
+        // Only reconcile an idle, current hand; never cancel its reveal.
+        if (isCurrentGeneration(generation) && handRef.current?.id === hand.id && !busyRef.current
+          && error instanceof HighLowApiError && error.statusCode === 409) void loadSession();
       });
     }, 15_000);
     return () => window.clearInterval(interval);
@@ -202,14 +222,20 @@ export function HighLowGame({ best, onBestChange, accessToken, inDiscord, onWall
       if (!isCurrentGeneration(generation)) return;
       setPrompt(promptFor(result.hand.currentCard));
     } catch (error) {
-      if (isCurrentGeneration(generation)) showError(error);
+      if (!isCurrentGeneration(generation)) return;
+      if (isUncertainHighLowError(error)
+        || error instanceof HighLowApiError && error.code === 'active_hand_exists') {
+        await loadSession();
+      } else {
+        showError(error);
+      }
     } finally {
       if (isCurrentGeneration(generation)) {
         setBusy(false);
         busyRef.current = false;
       }
     }
-  }, [accessToken, onWalletChanged, pause, showError, updateHand]);
+  }, [accessToken, loadSession, onWalletChanged, pause, showError, updateHand]);
 
   const finishGame = useCallback((settlement: HighLowSettlement | null) => {
     if (!settlement) return;
@@ -308,7 +334,8 @@ export function HighLowGame({ best, onBestChange, accessToken, inDiscord, onWall
 
   const makeGuess = useCallback(async (guess: Guess) => {
     const active = handRef.current;
-    if (!accessToken || !active || busyRef.current || !canGuess(active.currentCard, guess)) return;
+    if (!accessToken || !active || busyRef.current || !canGuess(active.currentCard, guess)
+      || !active.nextWinOffers[guess].available) return;
     const generation = generationRef.current;
     setBusy(true);
     busyRef.current = true;
@@ -320,7 +347,9 @@ export function HighLowGame({ best, onBestChange, accessToken, inDiscord, onWall
       if (!isCurrentGeneration(generation)) return;
       await presentGuess(result, generation);
     } catch (error) {
-      if (error instanceof HighLowApiError && ['stale_hand_version', 'hand_finished', 'hand_expired'].includes(error.code)) {
+      if (!isCurrentGeneration(generation)) return;
+      if (isUncertainHighLowError(error)
+        || error instanceof HighLowApiError && ['stale_hand_version', 'hand_finished', 'hand_expired', 'hand_not_found'].includes(error.code)) {
         await loadSession();
       } else {
         showError(error);
@@ -345,7 +374,9 @@ export function HighLowGame({ best, onBestChange, accessToken, inDiscord, onWall
       if (!isCurrentGeneration(generation)) return;
       finishGame(result.settlement);
     } catch (error) {
-      if (error instanceof HighLowApiError && ['stale_hand_version', 'hand_finished', 'hand_expired'].includes(error.code)) {
+      if (!isCurrentGeneration(generation)) return;
+      if (isUncertainHighLowError(error)
+        || error instanceof HighLowApiError && ['stale_hand_version', 'hand_finished', 'hand_expired', 'hand_not_found'].includes(error.code)) {
         await loadSession();
       } else {
         showError(error);
@@ -374,8 +405,8 @@ export function HighLowGame({ best, onBestChange, accessToken, inDiscord, onWall
   }, [makeGuess, phase]);
 
   const walletAmount = wallet === null ? null : BigInt(wallet);
-  const lowDisabled = busy || !hand || !canGuess(hand.currentCard, 'lower');
-  const highDisabled = busy || !hand || !canGuess(hand.currentCard, 'higher');
+  const lowDisabled = busy || !hand || !canGuess(hand.currentCard, 'lower') || !hand.nextWinOffers.lower.available;
+  const highDisabled = busy || !hand || !canGuess(hand.currentCard, 'higher') || !hand.nextWinOffers.higher.available;
   const resultClass = `result-banner${banner.hidden ? ' is-hidden' : ''}${banner.tone === 'default' ? '' : ` is-${banner.tone}`}`;
   const isFateRevealed = fatePhase === 'revealed' || fatePhase === 'resolved';
   const fateClass = `fate-overlay${fatePhase === 'idle' ? '' : ' is-active'}${fatePhase === 'rewriting' ? ' is-rewriting' : ''}${isFateRevealed ? ' is-revealed' : ''}${fatePhase === 'resolved' ? ' is-resolved' : ''}`;
@@ -386,20 +417,29 @@ export function HighLowGame({ best, onBestChange, accessToken, inDiscord, onWall
         <p className="eyebrow">GUILD CARD QUEST · SOLO</p>
         <h1 id="game-title"><span>HIGH</span><i aria-hidden="true">/</i><span>LOW</span></h1>
         <p className="hero-copy">次のカードは、いまより上か下か。</p>
+        {onOpenRanking ? <button className="high-low-ranking-button" type="button" aria-haspopup="dialog" onClick={onOpenRanking}>
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 3h10v6a5 5 0 0 1-10 0V3Zm0 2H3v3a4 4 0 0 0 4 4m10-7h4v3a4 4 0 0 1-4 4M12 14v5m-5 2h10" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          週間ランキングを見る<span aria-hidden="true">→</span>
+        </button> : null}
       </section>
 
       {phase !== 'playing' ? (
         <section className="game-shell game-setup" aria-label="ハイアンドローの開始設定">
           <div className="setup-heading">
             <p className="eyebrow">PLACE YOUR BET</p>
-            <h2>{summary?.title ?? (phase === 'loading' ? 'ゲームを確認中' : '賭け金を選ぶ')}</h2>
-            <p>{summary ? 'もう一度遊ぶ場合は、下からゲームを開始してください。' : (accessToken
+            <h2>{summary?.title ?? (phase === 'loading' ? 'ゲームを確認中' : phase === 'recovery' ? 'ゲーム状態を確認できません' : '賭け金を選ぶ')}</h2>
+            <p>{phase === 'recovery' ? '通信が戻ったら、進行中のゲームと残高を確認してください。' : summary ? 'もう一度遊ぶ場合は、下からゲームを開始してください。' : (accessToken
               ? '賭け金を確定すると、最初のカードが配られます。'
               : inDiscord ? 'Discordアカウントへ接続しています。' : '実プレイはDiscord Activityから起動してください。')}</p>
           </div>
           {summary ? <div className={`settlement-summary is-${summary.tone}`}>{summary.message}</div> : null}
           {errorMessage ? <p className="game-error" role="alert">{errorMessage}</p> : null}
           {phase === 'loading' ? <p className="activity-loading">サーバーのゲーム状態を確認しています…</p> : null}
+          {phase === 'recovery' ? (
+            <button className="quiet-button" type="button" data-retry-session disabled={busy} onClick={() => void loadSession()}>
+              ゲーム状態を再確認
+            </button>
+          ) : null}
           {phase === 'setup' && accessToken ? (
             <div className="wager-options" aria-label="賭け金">
               {WAGERS.map(wager => (
@@ -412,13 +452,8 @@ export function HighLowGame({ best, onBestChange, accessToken, inDiscord, onWall
             </div>
           ) : null}
           {phase === 'setup' && !accessToken && !inDiscord ? (
-            <p className="real-play-notice">この画面では結果を生成しません。DiscordでLEVELIA Gameを起動すると、実際の残高とサーバー山札でプレイできます。</p>
+            <p className="real-play-notice">この画面では結果を生成しません。DiscordでLEVELIA Gameを起動すると、残高とサーバー抽選でプレイできます。</p>
           ) : null}
-          <div className="payout-table" aria-label="連勝払い戻し倍率">
-            {[['1連勝', '1.5倍'], ['2連勝', '2.0倍'], ['3連勝', '3.0倍'], ['4連勝', '4.0倍'], ['5連勝', '6.0倍・強制精算']].map(([label, value]) => (
-              <span key={label}><small>{label}</small><strong>{value}</strong></span>
-            ))}
-          </div>
           <p className="disconnect-note">通信が切れた場合は5分間再接続できます。復帰しなければ、1勝以上は現在倍率で自動精算、0勝は払い戻しなしで終了します。</p>
         </section>
       ) : hand ? (
@@ -436,7 +471,7 @@ export function HighLowGame({ best, onBestChange, accessToken, inDiscord, onWall
               <div className="deck-stack">
                 <div className="deck-card deck-card-shadow" /><div className="deck-card deck-card-middle" /><div className="deck-card deck-card-top" />
               </div>
-              <span>山札</span>
+              <span>次のカード</span>
             </div>
             <div ref={stageRef} className={`card-stage${fatePhase === 'idle' ? '' : ' is-fate-active'}`} aria-label="現在のカード">
               <AnimatePresence initial>
@@ -453,19 +488,23 @@ export function HighLowGame({ best, onBestChange, accessToken, inDiscord, onWall
             <p className="decision-prompt">{prompt}</p>
             {errorMessage ? <p className="game-error" role="alert">{errorMessage}</p> : null}
             <div className="decision-buttons">
-              <button className="guess-button guess-low" type="button" disabled={lowDisabled} onClick={() => void makeGuess('lower')}>
+              <button className="guess-button guess-low has-offer" type="button" disabled={lowDisabled} onClick={() => void makeGuess('lower')}>
                 <span className="guess-icon" aria-hidden="true">↓</span><span><b>LOW</b><small>低い</small></span><kbd>↓</kbd>
+                <span className="guess-offer">{hand.nextWinOffers.lower.available
+                  ? <>勝つと<strong>{formatLia(hand.nextWinOffers.lower.payout!)}</strong><small>{hand.nextWinOffers.lower.multiplier}倍</small></> : '選択できません'}</span>
               </button>
-              <button className="guess-button guess-high" type="button" disabled={highDisabled} onClick={() => void makeGuess('higher')}>
+              <button className="guess-button guess-high has-offer" type="button" disabled={highDisabled} onClick={() => void makeGuess('higher')}>
                 <span className="guess-icon" aria-hidden="true">↑</span><span><b>HIGH</b><small>高い</small></span><kbd>↑</kbd>
+                <span className="guess-offer">{hand.nextWinOffers.higher.available
+                  ? <>勝つと<strong>{formatLia(hand.nextWinOffers.higher.payout!)}</strong><small>{hand.nextWinOffers.higher.multiplier}倍</small></> : '選択できません'}</span>
               </button>
             </div>
             {hand.canCashOut ? (
               <div className="continuation-offer" aria-label="精算と次の勝利時の配当">
                 <div><span>いま精算</span><strong>{formatLia(hand.potentialPayout)}</strong></div>
-                <div className="continuation-next"><span>次に勝つと</span><strong>{formatLia(hand.nextWinPayout)}</strong><small>{hand.nextWinMultiplier}倍</small></div>
+                <div className="continuation-next"><span>現在の倍率</span><strong>{hand.multiplier}倍</strong></div>
                 <button className="cashout-button" type="button" disabled={busy} onClick={() => void cashOut()}>
-                  <span className="cashout-icon" aria-hidden="true">✓</span>いま精算する
+                  <span className="cashout-icon" aria-hidden="true">✓</span><span>いま精算する<strong className="cashout-amount">{formatLia(hand.potentialPayout)}を受け取る</strong></span>
                 </button>
               </div>
             ) : null}

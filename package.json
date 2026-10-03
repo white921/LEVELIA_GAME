@@ -12,8 +12,9 @@
     "build": "vite build --config activity/vite.config.ts",
     "start": "node activity/server.mjs",
     "migrate": "node --env-file-if-exists=.env activity/server/migrate.mjs",
+    "commands:register": "node --env-file-if-exists=.env activity/server/registerCommands.mjs",
     "check": "tsc -p activity/tsconfig.json --noEmit",
-    "test": "tsx --test activity/test/*.test.ts && node --test activity/test-server/*.test.mjs",
+    "test": "tsx --tsconfig activity/tsconfig.json --test activity/test/*.test.ts && node --test activity/test-server/*.test.mjs",
     "activity:dev": "npm run dev",
     "activity:build": "npm run build",
     "activity:start": "npm start",
@@ -25,13 +26,16 @@
     "motion": "^12.23.24",
     "mysql2": "^3.24.4",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "tweetnacl": "^1.0.3"
   },
   "devDependencies": {
+    "@types/jsdom": "^30.0.0",
     "@types/node": "^22.20.4",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "@vitejs/plugin-react": "^5.0.4",
+    "jsdom": "^29.1.1",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vite": "^7.1.7"

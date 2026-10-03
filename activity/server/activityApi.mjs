@@ -2,6 +2,8 @@ import { exchangeDiscordCode, fetchCurrentDiscordUser } from './discordClient.mj
 import { createHighLowStore } from './highLowStore.mjs';
 import { errorMetadata } from './safeLog.mjs';
 import { createAccessPolicy } from './accessPolicy.mjs';
+import { createDiscordInteractions } from './discordInteractions.mjs';
+import { createLeaderboardProfiles } from './leaderboardProfiles.mjs';
 import {
   ApiError,
   readBearerToken,
@@ -11,6 +13,7 @@ import {
 } from './http.mjs';
 import {
   readMysqlUrl,
+  readWalletMode,
   readPublicActivityConfig,
   requireDiscordOAuthConfig,
 } from './runtimeConfig.mjs';
@@ -56,15 +59,22 @@ async function verifiedUser(request, fetchImpl) {
 export function createActivityApi({
   env = process.env,
   fetchImpl = fetch,
-  highLowStore = createHighLowStore(readMysqlUrl(env)),
+  highLowStore = createHighLowStore(readMysqlUrl(env), { walletMode: readWalletMode(env) }),
 } = {}) {
   const accessPolicy = createAccessPolicy(env);
+  const walletMode = readWalletMode(env);
+  const interactions = createDiscordInteractions({ env, store: highLowStore, fetchImpl });
+  const addLeaderboardProfiles = createLeaderboardProfiles({ env, fetchImpl });
   return {
     async handle(request, response, url) {
       const pathname = normalizeApiPath(url.pathname);
       if (!pathname.startsWith('/api/')) return false;
 
       try {
+        if (pathname === '/api/discord/interactions') {
+          await interactions.handle(request, response);
+          return true;
+        }
         if (pathname === '/api/config') {
           if (request.method !== 'GET') {
             sendMethodNotAllowed(response, ['GET']);
@@ -100,6 +110,10 @@ export function createActivityApi({
         // future routes. Never trust a user ID supplied by the browser.
         const user = await verifiedUser(request, fetchImpl);
         accessPolicy.assertAllowed(user.id);
+        if (request.method === 'POST' && pathname.startsWith('/api/high-low/')
+          && (request.headers['x-high-low-wallet-mode'] ?? 'real') !== walletMode) {
+          throw new ApiError(409, 'wallet_mode_changed', '残高モードが切り替わりました。画面を再読み込みしてください');
+        }
 
         if (pathname === '/api/balance') {
           if (request.method !== 'GET') {
@@ -110,7 +124,17 @@ export function createActivityApi({
           sendJson(response, 200, {
             accountFound: wallet !== null,
             wallet,
+            walletMode,
           });
+          return true;
+        }
+
+        if (pathname === '/api/high-low/leaderboard') {
+          if (request.method !== 'GET') {
+            sendMethodNotAllowed(response, ['GET']);
+            return true;
+          }
+          sendJson(response, 200, { ...await addLeaderboardProfiles(await highLowStore.readLeaderboard(user.id)), walletMode });
           return true;
         }
 
@@ -128,7 +152,7 @@ export function createActivityApi({
             sendMethodNotAllowed(response, ['GET']);
             return true;
           }
-          sendJson(response, 200, await highLowStore.readSession(user.id));
+          sendJson(response, 200, { ...await highLowStore.readSession(user.id), walletMode });
           return true;
         }
 
@@ -192,6 +216,7 @@ export function createActivityApi({
       }
     },
     async close() {
+      await interactions.close();
       await highLowStore.close();
     },
   };

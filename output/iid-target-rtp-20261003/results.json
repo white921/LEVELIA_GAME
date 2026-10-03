@@ -1,0 +1,1950 @@
+{
+  "createdAt": "2026-10-03T07:35:34.623Z",
+  "seeds": [
+    842101,
+    842107,
+    842111
+  ],
+  "R": [
+    1,
+    0.995,
+    1.005,
+    1.015,
+    1.025,
+    1.035
+  ],
+  "correction": 1,
+  "profiles": [
+    {
+      "id": "protect",
+      "label": "利益保全型",
+      "intercept": -1.5,
+      "streak": 0.8,
+      "danger": 1.4,
+      "profit": 0.9,
+      "wealth": 1.1,
+      "protect": 1.2,
+      "chase": 0,
+      "goal": 1.4,
+      "upside": 0.2,
+      "hot": 0,
+      "riskRate": 0,
+      "maxHands": 80,
+      "goalUnits": 3,
+      "lossFraction": 0.25,
+      "lossUnits": 10
+    },
+    {
+      "id": "balanced",
+      "label": "バランス型",
+      "intercept": -3.8,
+      "streak": 1,
+      "danger": 1.4,
+      "profit": 0.7,
+      "wealth": 0.8,
+      "protect": 0.6,
+      "chase": 0.25,
+      "goal": 1.3,
+      "upside": 0.4,
+      "hot": 0.2,
+      "riskRate": 0.03,
+      "maxHands": 250,
+      "goalUnits": 15,
+      "lossFraction": 0.5,
+      "lossUnits": 35
+    },
+    {
+      "id": "target",
+      "label": "目標利益型",
+      "intercept": -4.3,
+      "streak": 0.9,
+      "danger": 1.2,
+      "profit": 0.65,
+      "wealth": 0.7,
+      "protect": 0.3,
+      "chase": 0.4,
+      "goal": 3,
+      "upside": 0.5,
+      "hot": 0.15,
+      "riskRate": 0.02,
+      "maxHands": 250,
+      "goalUnits": 8,
+      "lossFraction": 0.5,
+      "lossUnits": 35
+    },
+    {
+      "id": "chase",
+      "label": "損失回復型",
+      "intercept": -3.8,
+      "streak": 0.85,
+      "danger": 0.9,
+      "profit": 0.55,
+      "wealth": 0.35,
+      "protect": 0.25,
+      "chase": 1.3,
+      "goal": 1.5,
+      "upside": 0.6,
+      "hot": 0.25,
+      "riskRate": 0.04,
+      "maxHands": 400,
+      "goalUnits": 10,
+      "lossFraction": 0.85,
+      "lossUnits": null,
+      "raiseAfterLosses": true
+    },
+    {
+      "id": "thrill",
+      "label": "高配当志向型",
+      "intercept": -4.8,
+      "streak": 0.7,
+      "danger": 0.4,
+      "profit": 0.5,
+      "wealth": 0.25,
+      "protect": 0,
+      "chase": 0.2,
+      "goal": 0.8,
+      "upside": 1,
+      "hot": 0.5,
+      "riskRate": 0.25,
+      "maxHands": 300,
+      "goalUnits": 50,
+      "lossFraction": 0.65,
+      "lossUnits": null
+    },
+    {
+      "id": "ev",
+      "label": "期待値重視型",
+      "alwaysContinue": true,
+      "riskRate": 0,
+      "maxHands": 300,
+      "goalUnits": null,
+      "lossFraction": 1,
+      "lossUnits": null
+    }
+  ],
+  "compositions": [
+    {
+      "id": "equal",
+      "label": "6タイプを同人数ずつ",
+      "shares": {
+        "protect": 0.16666666666666666,
+        "balanced": 0.16666666666666666,
+        "target": 0.16666666666666666,
+        "chase": 0.16666666666666666,
+        "thrill": 0.16666666666666666,
+        "ev": 0.16666666666666666
+      }
+    },
+    {
+      "id": "cautious",
+      "label": "慎重な人が多い構成",
+      "shares": {
+        "protect": 0.4,
+        "balanced": 0.25,
+        "target": 0.15,
+        "chase": 0.1,
+        "thrill": 0.05,
+        "ev": 0.05
+      }
+    },
+    {
+      "id": "engaged",
+      "label": "中間・目標型が多い構成",
+      "shares": {
+        "protect": 0.15,
+        "balanced": 0.3,
+        "target": 0.2,
+        "chase": 0.15,
+        "thrill": 0.1,
+        "ev": 0.1
+      }
+    },
+    {
+      "id": "aggressive",
+      "label": "粘る人・期待値重視が多い構成",
+      "shares": {
+        "protect": 0.05,
+        "balanced": 0.1,
+        "target": 0.1,
+        "chase": 0.25,
+        "thrill": 0.2,
+        "ev": 0.3
+      }
+    }
+  ],
+  "assumptions": {
+    "status": "hypothetical behavioral parameters; not fitted to player data",
+    "baseWagerProbabilities": {
+      "100": 0.1,
+      "1000": 0.25,
+      "10000": 0.65
+    },
+    "initialBankrollMultiples": {
+      "10": 0.25,
+      "50": 0.5,
+      "200": 0.25
+    },
+    "personality": "per-session cashout log-odds offset uniform [-.6,.6]",
+    "cashDecision": "logistic score from streak, selected win probability, cashout size, next payout, bankroll exposure, session P/L, target attainment and recent wins",
+    "tie": "continue same choice; no repeated cashout sampling until a win",
+    "gainProtection": "bankroll/session gains encourage cashout depending on profile",
+    "chasing": "session deficit reduces cashout; two losses can raise wager one allowed tier, capped at 10000 and available balance",
+    "settlement": "floor final payout to integer LIA; cash out if selected next payout would exceed wallet INT limit",
+    "draw": "independent uniform draw from all 52 cards; ties 1/13, A/2 redraw, losing fate shift 1/1000",
+    "horizon": "profile-specific session limits; quit at loss/profit limits or bankroll exhaustion",
+    "noClaims": "type frequencies and coefficients are analyst-chosen sensitivity scenarios, not human population estimates",
+    "expectedRtp": "independent importance trajectory per real wager at actual pre-hand session state; estimate weighted by actual stake volume",
+    "confidence": "95% approximate ratio intervals clustered by independent session; excludes model misspecification"
+  },
+  "validation": {
+    "ruleSha256": "9ea78b89dde33b5876f9ec69cdb68ceaaab11504bf29d4f54fd7ae381c2db80c",
+    "kernelChecks": 4704,
+    "simulationSha256": "80d4622ace8442df01ea2a9315062b7446c330f69ab1ccbf7db4fc7a2d3d30c9"
+  },
+  "cases": [
+    {
+      "cashShift": 0,
+      "label": "基準行動",
+      "profiles": [
+        {
+          "id": "protect",
+          "label": "利益保全型",
+          "sessions": 3000,
+          "hands": 79944,
+          "wagers": 550786200,
+          "expected": {
+            "rtp": 100.35523336528527,
+            "ci95HalfWidth": 0.012897460235163907
+          },
+          "raw": {
+            "rtp": 100.50541698394042,
+            "ci95HalfWidth": 0.8029671691227814
+          },
+          "control": {
+            "rtp": 100.35255373238132,
+            "ci95HalfWidth": 0.01631366143972935
+          },
+          "unroundedRtp": 100.35942712435424,
+          "averageHands": 26.648,
+          "averageWager": 6889.650255178625,
+          "averageTurnover": 183595.4,
+          "positiveSessionRate": 0.661,
+          "brokeRate": 0,
+          "goalStopRate": 0.646,
+          "lossStopRate": 0.26666666666666666,
+          "riskyGuessRate": 0,
+          "maxObservedPayout": 103974,
+          "terminalStreaks": [
+            34268,
+            22824,
+            16267,
+            5599,
+            913,
+            73
+          ],
+          "betTiers": {
+            "100": 7842,
+            "1000": 19002,
+            "10000": 53100
+          },
+          "aggregates": {
+            "sessions": 3000,
+            "hands": 79944,
+            "wagers": 550786200,
+            "expected": 552742776.3537868,
+            "unrounded": 552765875,
+            "paid": 553569967,
+            "cv": 552728017.3055413,
+            "w2": 262409229540000,
+            "e2": 264372233497885.22,
+            "ew": 263388252802575.4,
+            "p2": 249906385235189,
+            "pw": 253660453152800,
+            "c2": 264041330931731.38,
+            "cw": 263222991617535.22,
+            "goalStops": 1938,
+            "lossStops": 800,
+            "broke": 0,
+            "positiveSessions": 1983,
+            "net": 2783767,
+            "initial": 1573417000,
+            "turns": 136731,
+            "risky": 0,
+            "maxPayout": 103974,
+            "terminalStreaks": [
+              34268,
+              22824,
+              16267,
+              5599,
+              913,
+              73
+            ],
+            "betTiers": {
+              "100": 7842,
+              "1000": 19002,
+              "10000": 53100
+            }
+          }
+        },
+        {
+          "id": "balanced",
+          "label": "バランス型",
+          "sessions": 3000,
+          "hands": 305218,
+          "wagers": 2060397100,
+          "expected": {
+            "rtp": 101.83112959458892,
+            "ci95HalfWidth": 0.01854169702985374
+          },
+          "raw": {
+            "rtp": 101.7970150996621,
+            "ci95HalfWidth": 0.7526114940374022
+          },
+          "control": {
+            "rtp": 101.82972576323866,
+            "ci95HalfWidth": 0.021643357846464015
+          },
+          "unroundedRtp": 101.83354905226764,
+          "averageHands": 101.73933333333333,
+          "averageWager": 6750.575326487953,
+          "averageTurnover": 686799.0333333333,
+          "positiveSessionRate": 0.567,
+          "brokeRate": 0,
+          "goalStopRate": 0.52,
+          "lossStopRate": 0.362,
+          "riskyGuessRate": 0.023953776354274876,
+          "maxObservedPayout": 546384,
+          "terminalStreaks": [
+            203048,
+            13266,
+            24580,
+            31509,
+            22262,
+            10553
+          ],
+          "betTiers": {
+            "100": 31761,
+            "1000": 75261,
+            "10000": 198196
+          },
+          "aggregates": {
+            "sessions": 3000,
+            "hands": 305218,
+            "wagers": 2060397100,
+            "expected": 2098125641.0641518,
+            "unrounded": 2098175491.5,
+            "paid": 2097422747,
+            "cv": 2098096716.563722,
+            "w2": 3292783459590000,
+            "e2": 3417421524400413,
+            "ew": 3354505335941955,
+            "p2": 3318491185401421,
+            "pw": 3275198515458600,
+            "c2": 3414245942095557.5,
+            "cw": 3352939334158988,
+            "goalStops": 1560,
+            "lossStops": 1086,
+            "broke": 0,
+            "positiveSessions": 1701,
+            "net": 37025647,
+            "initial": 1596718000,
+            "turns": 751823,
+            "risky": 18009,
+            "maxPayout": 546384,
+            "terminalStreaks": [
+              203048,
+              13266,
+              24580,
+              31509,
+              22262,
+              10553
+            ],
+            "betTiers": {
+              "100": 31761,
+              "1000": 75261,
+              "10000": 198196
+            }
+          }
+        },
+        {
+          "id": "target",
+          "label": "目標利益型",
+          "sessions": 3000,
+          "hands": 132854,
+          "wagers": 901278500,
+          "expected": {
+            "rtp": 102.69258246520158,
+            "ci95HalfWidth": 0.016612024300663657
+          },
+          "raw": {
+            "rtp": 103.06816838524384,
+            "ci95HalfWidth": 1.3770702138883946
+          },
+          "control": {
+            "rtp": 102.70975020803019,
+            "ci95HalfWidth": 0.042836194990266474
+          },
+          "unroundedRtp": 102.69427735156225,
+          "averageHands": 44.284666666666666,
+          "averageWager": 6783.977147846508,
+          "averageTurnover": 300426.1666666667,
+          "positiveSessionRate": 0.683,
+          "brokeRate": 0,
+          "goalStopRate": 0.6806666666666666,
+          "lossStopRate": 0.30866666666666664,
+          "riskyGuessRate": 0.016671299810753885,
+          "maxObservedPayout": 412349,
+          "terminalStreaks": [
+            100972,
+            951,
+            3178,
+            6381,
+            8761,
+            12611
+          ],
+          "betTiers": {
+            "100": 14095,
+            "1000": 31969,
+            "10000": 86790
+          },
+          "aggregates": {
+            "sessions": 3000,
+            "hands": 132854,
+            "wagers": 901278500,
+            "expected": 925546166.853632,
+            "unrounded": 925561442.5,
+            "paid": 928931242,
+            "cv": 925700896.0286814,
+            "w2": 905424765810000,
+            "e2": 956374805002402.9,
+            "ew": 930548605209029.9,
+            "p2": 868109457247904,
+            "pw": 868290518860800,
+            "c2": 952564050484173.9,
+            "cw": 928677343242726.4,
+            "goalStops": 2042,
+            "lossStops": 926,
+            "broke": 0,
+            "positiveSessions": 2049,
+            "net": 27652742,
+            "initial": 1609007000,
+            "turns": 374116,
+            "risky": 6237,
+            "maxPayout": 412349,
+            "terminalStreaks": [
+              100972,
+              951,
+              3178,
+              6381,
+              8761,
+              12611
+            ],
+            "betTiers": {
+              "100": 14095,
+              "1000": 31969,
+              "10000": 86790
+            }
+          }
+        },
+        {
+          "id": "chase",
+          "label": "損失回復型",
+          "sessions": 3000,
+          "hands": 172424,
+          "wagers": 1644753800,
+          "expected": {
+            "rtp": 102.76619536190034,
+            "ci95HalfWidth": 0.031138440349040876
+          },
+          "raw": {
+            "rtp": 102.49335122375155,
+            "ci95HalfWidth": 1.2131399028200338
+          },
+          "control": {
+            "rtp": 102.75442781681208,
+            "ci95HalfWidth": 0.03463039583925467
+          },
+          "unroundedRtp": 102.76733812683698,
+          "averageHands": 57.474666666666664,
+          "averageWager": 9539.007330766019,
+          "averageTurnover": 548251.2666666667,
+          "positiveSessionRate": 0.7076666666666667,
+          "brokeRate": 0.008,
+          "goalStopRate": 0.706,
+          "lossStopRate": 0.26566666666666666,
+          "riskyGuessRate": 0.0355307342000828,
+          "maxObservedPayout": 1715618,
+          "terminalStreaks": [
+            133455,
+            2500,
+            5270,
+            7034,
+            6588,
+            17577
+          ],
+          "betTiers": {
+            "100": 2208,
+            "1000": 6403,
+            "10000": 163813
+          },
+          "aggregates": {
+            "sessions": 3000,
+            "hands": 172424,
+            "wagers": 1644753800,
+            "expected": 1690250903.3302796,
+            "unrounded": 1690269699,
+            "paid": 1685763289,
+            "cv": 1690057356.1852736,
+            "w2": 3274065222520000,
+            "e2": 3473509600643832,
+            "ew": 3372288856778612,
+            "p2": 3040194390406351,
+            "pw": 3110426776865700,
+            "c2": 3456745859008578.5,
+            "cw": 3364124701798999.5,
+            "goalStops": 2118,
+            "lossStops": 797,
+            "broke": 24,
+            "positiveSessions": 2123,
+            "net": 41009489,
+            "initial": 1578139000,
+            "turns": 478262,
+            "risky": 16993,
+            "maxPayout": 1715618,
+            "terminalStreaks": [
+              133455,
+              2500,
+              5270,
+              7034,
+              6588,
+              17577
+            ],
+            "betTiers": {
+              "100": 2208,
+              "1000": 6403,
+              "10000": 163813
+            }
+          }
+        },
+        {
+          "id": "thrill",
+          "label": "高配当志向型",
+          "sessions": 3000,
+          "hands": 316876,
+          "wagers": 2138325700,
+          "expected": {
+            "rtp": 103.15947816121084,
+            "ci95HalfWidth": 0.00701331135521567
+          },
+          "raw": {
+            "rtp": 102.36840430809954,
+            "ci95HalfWidth": 2.6393943568063776
+          },
+          "control": {
+            "rtp": 103.12396331862261,
+            "ci95HalfWidth": 0.09369877472901321
+          },
+          "unroundedRtp": 103.1601958719385,
+          "averageHands": 105.62533333333333,
+          "averageWager": 6748.146593620218,
+          "averageTurnover": 712775.2333333333,
+          "positiveSessionRate": 0.3,
+          "brokeRate": 0,
+          "goalStopRate": 0.2753333333333333,
+          "lossStopRate": 0.5886666666666667,
+          "riskyGuessRate": 0.2291425946292094,
+          "maxObservedPayout": 6374699,
+          "terminalStreaks": [
+            285479,
+            1153,
+            1806,
+            2660,
+            3506,
+            22272
+          ],
+          "betTiers": {
+            "100": 29897,
+            "1000": 81606,
+            "10000": 205373
+          },
+          "aggregates": {
+            "sessions": 3000,
+            "hands": 316876,
+            "wagers": 2138325700,
+            "expected": 2205885633.507059,
+            "unrounded": 2205900980.5,
+            "paid": 2188969898,
+            "cv": 2205126210.5006804,
+            "w2": 4190719149510000,
+            "e2": 4460722460471556.5,
+            "ew": 4323610845904798,
+            "p2": 4538521461647502,
+            "pw": 3956886432687900,
+            "c2": 4435598813942404,
+            "cw": 4310926335190622,
+            "goalStops": 826,
+            "lossStops": 1766,
+            "broke": 0,
+            "positiveSessions": 900,
+            "net": 50644198,
+            "initial": 1594612000,
+            "turns": 790163,
+            "risky": 181060,
+            "maxPayout": 6374699,
+            "terminalStreaks": [
+              285479,
+              1153,
+              1806,
+              2660,
+              3506,
+              22272
+            ],
+            "betTiers": {
+              "100": 29897,
+              "1000": 81606,
+              "10000": 205373
+            }
+          }
+        },
+        {
+          "id": "ev",
+          "label": "期待値重視型",
+          "sessions": 3000,
+          "hands": 737697,
+          "wagers": 4993241700,
+          "expected": {
+            "rtp": 103.49870276884378,
+            "ci95HalfWidth": 0.00003419026630516658
+          },
+          "raw": {
+            "rtp": 103.56813654744572,
+            "ci95HalfWidth": 0.671221429657036
+          },
+          "control": {
+            "rtp": 103.50139159192196,
+            "ci95HalfWidth": 0.025938599767138065
+          },
+          "unroundedRtp": 103.5,
+          "averageHands": 245.899,
+          "averageWager": 6768.6891772638355,
+          "averageTurnover": 1664413.9,
+          "positiveSessionRate": 0.48733333333333334,
+          "brokeRate": 0.265,
+          "goalStopRate": 0,
+          "lossStopRate": 0.03933333333333333,
+          "riskyGuessRate": 0,
+          "maxObservedPayout": 242255,
+          "terminalStreaks": [
+            605632,
+            0,
+            0,
+            0,
+            0,
+            132065
+          ],
+          "betTiers": {
+            "100": 74197,
+            "1000": 183242,
+            "10000": 480258
+          },
+          "aggregates": {
+            "sessions": 3000,
+            "hands": 737697,
+            "wagers": 4993241700,
+            "expected": 5167940385.612963,
+            "unrounded": 5168005159.5,
+            "paid": 5171407382,
+            "cv": 5168074645.048141,
+            "w2": 13844017217230000,
+            "e2": 14829801588648954,
+            "ew": 14328434265962250,
+            "p2": 15568678548538564,
+            "pw": 14544029587893800,
+            "c2": 14847483974094670,
+            "cw": 14336765495037326,
+            "goalStops": 0,
+            "lossStops": 118,
+            "broke": 795,
+            "positiveSessions": 1462,
+            "net": 178165682,
+            "initial": 1577041000,
+            "turns": 2280718,
+            "risky": 0,
+            "maxPayout": 242255,
+            "terminalStreaks": [
+              605632,
+              0,
+              0,
+              0,
+              0,
+              132065
+            ],
+            "betTiers": {
+              "100": 74197,
+              "1000": 183242,
+              "10000": 480258
+            }
+          }
+        }
+      ],
+      "mixtures": [
+        {
+          "id": "equal",
+          "label": "6タイプを同人数ずつ",
+          "populationShares": {
+            "protect": 0.16666666666666666,
+            "balanced": 0.16666666666666666,
+            "target": 0.16666666666666666,
+            "chase": 0.16666666666666666,
+            "thrill": 0.16666666666666666,
+            "ev": 0.16666666666666666
+          },
+          "turnoverShares": {
+            "protect": 0.044820239725935435,
+            "balanced": 0.16766486152453014,
+            "target": 0.0733415587206642,
+            "chase": 0.13384187840244227,
+            "thrill": 0.17400630314653615,
+            "ev": 0.40632515847989176
+          },
+          "rtp": 102.86202878447664,
+          "ci95HalfWidth": 0.012628138253510795,
+          "rawRtp": 102.74462918744678
+        },
+        {
+          "id": "cautious",
+          "label": "慎重な人が多い構成",
+          "populationShares": {
+            "protect": 0.4,
+            "balanced": 0.25,
+            "target": 0.15,
+            "chase": 0.1,
+            "thrill": 0.05,
+            "ev": 0.05
+          },
+          "turnoverShares": {
+            "protect": 0.15831064626680752,
+            "balanced": 0.3701331801559934,
+            "target": 0.09714430604019686,
+            "chase": 0.11818652910502633,
+            "thrill": 0.07682648083229107,
+            "ev": 0.1793988575996849
+          },
+          "rtp": 102.19288999564799,
+          "ci95HalfWidth": 0.01886315736591195,
+          "rawRtp": 102.15995920711285
+        },
+        {
+          "id": "engaged",
+          "label": "中間・目標型が多い構成",
+          "populationShares": {
+            "protect": 0.15,
+            "balanced": 0.3,
+            "target": 0.2,
+            "chase": 0.15,
+            "thrill": 0.1,
+            "ev": 0.1
+          },
+          "turnoverShares": {
+            "protect": 0.044880009701104416,
+            "balanced": 0.33577690158586904,
+            "target": 0.09791915102060007,
+            "chase": 0.1340203630735998,
+            "thrill": 0.11615889935770707,
+            "ev": 0.27124467526111956
+          },
+          "rtp": 102.58118179645447,
+          "ci95HalfWidth": 0.015483847579083854,
+          "rawRtp": 102.50362083792055
+        },
+        {
+          "id": "aggressive",
+          "label": "粘る人・期待値重視が多い構成",
+          "populationShares": {
+            "protect": 0.05,
+            "balanced": 0.1,
+            "target": 0.1,
+            "chase": 0.25,
+            "thrill": 0.2,
+            "ev": 0.3
+          },
+          "turnoverShares": {
+            "protect": 0.010351050075504234,
+            "balanced": 0.07744302074933505,
+            "target": 0.03387586285014164,
+            "chase": 0.1545511574697757,
+            "thrill": 0.1607441609716267,
+            "ev": 0.5630347478836167
+          },
+          "rtp": 103.14197639232181,
+          "ci95HalfWidth": 0.008414648792551837,
+          "rawRtp": 103.02337706794138
+        }
+      ]
+    },
+    {
+      "cashShift": 0.75,
+      "label": "全体的に精算しやすい",
+      "profiles": [
+        {
+          "id": "protect",
+          "label": "利益保全型",
+          "sessions": 1500,
+          "hands": 47354,
+          "wagers": 314283200,
+          "expected": {
+            "rtp": 100.03783659758385,
+            "ci95HalfWidth": 0.013438088692703756
+          },
+          "raw": {
+            "rtp": 99.41971922139014,
+            "ci95HalfWidth": 0.9222080263091774
+          },
+          "control": {
+            "rtp": 100.02702136617978,
+            "ci95HalfWidth": 0.015429934433561774
+          },
+          "unroundedRtp": 100.04264275023291,
+          "averageHands": 31.569333333333333,
+          "averageWager": 6636.888119271867,
+          "averageTurnover": 209522.13333333333,
+          "positiveSessionRate": 0.6106666666666667,
+          "brokeRate": 0,
+          "goalStopRate": 0.592,
+          "lossStopRate": 0.2793333333333333,
+          "riskyGuessRate": 0,
+          "maxObservedPayout": 76460,
+          "terminalStreaks": [
+            17843,
+            19210,
+            8428,
+            1721,
+            146,
+            6
+          ],
+          "betTiers": {
+            "100": 4302,
+            "1000": 12963,
+            "10000": 30089
+          },
+          "aggregates": {
+            "sessions": 1500,
+            "hands": 47354,
+            "wagers": 314283200,
+            "expected": 314402114.0696576,
+            "unrounded": 314417219,
+            "paid": 312459475,
+            "cv": 314368123.61431354,
+            "w2": 160308066720000,
+            "e2": 160473225944810.75,
+            "ew": 160390394658518.62,
+            "p2": 152376516742025,
+            "pw": 155222864239100,
+            "c2": 160349026518168.66,
+            "cw": 160328241148858.25,
+            "goalStops": 888,
+            "lossStops": 419,
+            "broke": 0,
+            "positiveSessions": 916,
+            "net": -1823725,
+            "initial": 758386000,
+            "turns": 70684,
+            "risky": 0,
+            "maxPayout": 76460,
+            "terminalStreaks": [
+              17843,
+              19210,
+              8428,
+              1721,
+              146,
+              6
+            ],
+            "betTiers": {
+              "100": 4302,
+              "1000": 12963,
+              "10000": 30089
+            }
+          }
+        },
+        {
+          "id": "balanced",
+          "label": "バランス型",
+          "sessions": 1500,
+          "hands": 187807,
+          "wagers": 1242682600,
+          "expected": {
+            "rtp": 101.36245335314646,
+            "ci95HalfWidth": 0.025330848730215075
+          },
+          "raw": {
+            "rtp": 101.47043010017201,
+            "ci95HalfWidth": 0.8189429055673467
+          },
+          "control": {
+            "rtp": 101.36886612668616,
+            "ci95HalfWidth": 0.02541084180997887
+          },
+          "unroundedRtp": 101.36537905978567,
+          "averageHands": 125.20466666666667,
+          "averageWager": 6616.806615301879,
+          "averageTurnover": 828455.0666666667,
+          "positiveSessionRate": 0.544,
+          "brokeRate": 0,
+          "goalStopRate": 0.454,
+          "lossStopRate": 0.334,
+          "riskyGuessRate": 0.023263149222639376,
+          "maxObservedPayout": 535271,
+          "terminalStreaks": [
+            113612,
+            15187,
+            23309,
+            21876,
+            10839,
+            2984
+          ],
+          "betTiers": {
+            "100": 19556,
+            "1000": 49087,
+            "10000": 119164
+          },
+          "aggregates": {
+            "sessions": 1500,
+            "hands": 187807,
+            "wagers": 1242682600,
+            "expected": 1259613570.7526677,
+            "unrounded": 1259649928,
+            "paid": 1260955379,
+            "cv": 1259693261.1736228,
+            "w2": 2227444328400000,
+            "e2": 2289869992892449,
+            "ew": 2258428860691208.5,
+            "p2": 2244993685529619,
+            "pw": 2223053497598600,
+            "c2": 2289022961329651,
+            "cw": 2258010947803514,
+            "goalStops": 681,
+            "lossStops": 501,
+            "broke": 0,
+            "positiveSessions": 816,
+            "net": 18272779,
+            "initial": 804278000,
+            "turns": 424835,
+            "risky": 9883,
+            "maxPayout": 535271,
+            "terminalStreaks": [
+              113612,
+              15187,
+              23309,
+              21876,
+              10839,
+              2984
+            ],
+            "betTiers": {
+              "100": 19556,
+              "1000": 49087,
+              "10000": 119164
+            }
+          }
+        },
+        {
+          "id": "target",
+          "label": "目標利益型",
+          "sessions": 1500,
+          "hands": 81423,
+          "wagers": 543377700,
+          "expected": {
+            "rtp": 102.30988551503093,
+            "ci95HalfWidth": 0.02774045684693279
+          },
+          "raw": {
+            "rtp": 101.25447603020883,
+            "ci95HalfWidth": 1.6208563576866797
+          },
+          "control": {
+            "rtp": 102.28574875573347,
+            "ci95HalfWidth": 0.046986953523248796
+          },
+          "unroundedRtp": 102.31188499270397,
+          "averageHands": 54.282,
+          "averageWager": 6673.516082679341,
+          "averageTurnover": 362251.8,
+          "positiveSessionRate": 0.68,
+          "brokeRate": 0,
+          "goalStopRate": 0.6753333333333333,
+          "lossStopRate": 0.302,
+          "riskyGuessRate": 0.016580040867263675,
+          "maxObservedPayout": 412349,
+          "terminalStreaks": [
+            58972,
+            1145,
+            3491,
+            6116,
+            6499,
+            5200
+          ],
+          "betTiers": {
+            "100": 10217,
+            "1000": 18856,
+            "10000": 52350
+          },
+          "aggregates": {
+            "sessions": 1500,
+            "hands": 81423,
+            "wagers": 543377700,
+            "expected": 555929102.7842082,
+            "unrounded": 555939967.5,
+            "paid": 550194243,
+            "cv": 555797949.0166831,
+            "w2": 616849444370000,
+            "e2": 646812073615350.9,
+            "ew": 631650478958823.5,
+            "p2": 581225467489015,
+            "pw": 589341772978700,
+            "c2": 644403618120668,
+            "cw": 630467909739458,
+            "goalStops": 1013,
+            "lossStops": 453,
+            "broke": 0,
+            "positiveSessions": 1020,
+            "net": 6816543,
+            "initial": 782936000,
+            "turns": 218757,
+            "risky": 3627,
+            "maxPayout": 412349,
+            "terminalStreaks": [
+              58972,
+              1145,
+              3491,
+              6116,
+              6499,
+              5200
+            ],
+            "betTiers": {
+              "100": 10217,
+              "1000": 18856,
+              "10000": 52350
+            }
+          }
+        },
+        {
+          "id": "chase",
+          "label": "損失回復型",
+          "sessions": 1500,
+          "hands": 92533,
+          "wagers": 875747200,
+          "expected": {
+            "rtp": 102.421371153008,
+            "ci95HalfWidth": 0.05437589375531854
+          },
+          "raw": {
+            "rtp": 104.07591916936761,
+            "ci95HalfWidth": 1.5424744009646818
+          },
+          "control": {
+            "rtp": 102.47002734454729,
+            "ci95HalfWidth": 0.049017590756655016
+          },
+          "unroundedRtp": 102.42272655853196,
+          "averageHands": 61.68866666666667,
+          "averageWager": 9464.160893951346,
+          "averageTurnover": 583831.4666666667,
+          "positiveSessionRate": 0.7306666666666667,
+          "brokeRate": 0.014,
+          "goalStopRate": 0.7273333333333334,
+          "lossStopRate": 0.24533333333333332,
+          "riskyGuessRate": 0.034593204233428355,
+          "maxObservedPayout": 925899,
+          "terminalStreaks": [
+            67757,
+            2945,
+            5005,
+            5368,
+            3965,
+            7493
+          ],
+          "betTiers": {
+            "100": 1342,
+            "1000": 4033,
+            "10000": 87158
+          },
+          "aggregates": {
+            "sessions": 1500,
+            "hands": 92533,
+            "wagers": 875747200,
+            "expected": 896952290.0740752,
+            "unrounded": 896964160,
+            "paid": 911441948,
+            "cv": 897378395.3091072,
+            "w2": 1797216982540000,
+            "e2": 1895066740633530.5,
+            "ew": 1845470820342395.5,
+            "p2": 1730254483066990,
+            "pw": 1743677340068000,
+            "c2": 1889073938854459.2,
+            "cw": 1842549999102266,
+            "goalStops": 1091,
+            "lossStops": 368,
+            "broke": 21,
+            "positiveSessions": 1096,
+            "net": 35694748,
+            "initial": 774221000,
+            "turns": 244152,
+            "risky": 8446,
+            "maxPayout": 925899,
+            "terminalStreaks": [
+              67757,
+              2945,
+              5005,
+              5368,
+              3965,
+              7493
+            ],
+            "betTiers": {
+              "100": 1342,
+              "1000": 4033,
+              "10000": 87158
+            }
+          }
+        },
+        {
+          "id": "thrill",
+          "label": "高配当志向型",
+          "sessions": 1500,
+          "hands": 156287,
+          "wagers": 1092529100,
+          "expected": {
+            "rtp": 102.9116436850761,
+            "ci95HalfWidth": 0.015045344593160098
+          },
+          "raw": {
+            "rtp": 104.81090810304275,
+            "ci95HalfWidth": 3.814865119991408
+          },
+          "control": {
+            "rtp": 102.98115457495808,
+            "ci95HalfWidth": 0.132089282045143
+          },
+          "unroundedRtp": 102.91244759521737,
+          "averageHands": 104.19133333333333,
+          "averageWager": 6990.530882287075,
+          "averageTurnover": 728352.7333333333,
+          "positiveSessionRate": 0.30733333333333335,
+          "brokeRate": 0,
+          "goalStopRate": 0.284,
+          "lossStopRate": 0.592,
+          "riskyGuessRate": 0.23109427173625982,
+          "maxObservedPayout": 7428436,
+          "terminalStreaks": [
+            138578,
+            1158,
+            1817,
+            2401,
+            2975,
+            9358
+          ],
+          "betTiers": {
+            "100": 16071,
+            "1000": 34582,
+            "10000": 105634
+          },
+          "aggregates": {
+            "sessions": 1500,
+            "hands": 156287,
+            "wagers": 1092529100,
+            "expected": 1124339654.5477688,
+            "unrounded": 1124348437.5,
+            "paid": 1145089671,
+            "cv": 1125099081.2473984,
+            "w2": 2175431912470000,
+            "e2": 2304594787028421,
+            "ew": 2239078794605850.8,
+            "p2": 2416926645526041,
+            "pw": 2077469895900000,
+            "c2": 2294205577565361,
+            "cw": 2233775248582991.5,
+            "goalStops": 426,
+            "lossStops": 888,
+            "broke": 0,
+            "positiveSessions": 461,
+            "net": 52560571,
+            "initial": 793329000,
+            "turns": 382437,
+            "risky": 88379,
+            "maxPayout": 7428436,
+            "terminalStreaks": [
+              138578,
+              1158,
+              1817,
+              2401,
+              2975,
+              9358
+            ],
+            "betTiers": {
+              "100": 16071,
+              "1000": 34582,
+              "10000": 105634
+            }
+          }
+        },
+        {
+          "id": "ev",
+          "label": "期待値重視型",
+          "sessions": 1500,
+          "hands": 374221,
+          "wagers": 2512670500,
+          "expected": {
+            "rtp": 103.49869113960307,
+            "ci95HalfWidth": 0.000048921186122670676
+          },
+          "raw": {
+            "rtp": 103.0672039171073,
+            "ci95HalfWidth": 0.9703011863819033
+          },
+          "control": {
+            "rtp": 103.48202980717316,
+            "ci95HalfWidth": 0.03749557675140304
+          },
+          "unroundedRtp": 103.5,
+          "averageHands": 249.48066666666668,
+          "averageWager": 6714.4027192487865,
+          "averageTurnover": 1675113.6666666667,
+          "positiveSessionRate": 0.47533333333333333,
+          "brokeRate": 0.25866666666666666,
+          "goalStopRate": 0,
+          "lossStopRate": 0.037333333333333336,
+          "riskyGuessRate": 0,
+          "maxObservedPayout": 282551,
+          "terminalStreaks": [
+            307700,
+            0,
+            0,
+            0,
+            0,
+            66521
+          ],
+          "betTiers": {
+            "100": 37465,
+            "1000": 95404,
+            "10000": 241352
+          },
+          "aggregates": {
+            "sessions": 1500,
+            "hands": 374221,
+            "wagers": 2512670500,
+            "expected": 2600581080.15092,
+            "unrounded": 2600613967.5,
+            "paid": 2589739228,
+            "cv": 2600162435.766047,
+            "w2": 6991966394290000,
+            "e2": 7489839731322664,
+            "ew": 7236622672083782,
+            "p2": 7790500646994190,
+            "pw": 7307530471819800,
+            "c2": 7495741084050965,
+            "cw": 7239362594165470,
+            "goalStops": 0,
+            "lossStops": 56,
+            "broke": 388,
+            "positiveSessions": 713,
+            "net": 77068728,
+            "initial": 800340000,
+            "turns": 1155878,
+            "risky": 0,
+            "maxPayout": 282551,
+            "terminalStreaks": [
+              307700,
+              0,
+              0,
+              0,
+              0,
+              66521
+            ],
+            "betTiers": {
+              "100": 37465,
+              "1000": 95404,
+              "10000": 241352
+            }
+          }
+        }
+      ],
+      "mixtures": [
+        {
+          "id": "equal",
+          "label": "6タイプを同人数ずつ",
+          "populationShares": {
+            "protect": 0.16666666666666666,
+            "balanced": 0.16666666666666666,
+            "target": 0.16666666666666666,
+            "chase": 0.16666666666666666,
+            "thrill": 0.16666666666666666,
+            "ev": 0.16666666666666666
+          },
+          "turnoverShares": {
+            "protect": 0.047754039963865444,
+            "balanced": 0.18882051138209174,
+            "target": 0.08256400724338206,
+            "chase": 0.13306618612462667,
+            "thrill": 0.16600530446134554,
+            "ev": 0.3817899508246886
+          },
+          "rtp": 102.5910954327497,
+          "ci95HalfWidth": 0.022245514955207983,
+          "rawRtp": 102.86554209590176
+        },
+        {
+          "id": "cautious",
+          "label": "慎重な人が多い構成",
+          "populationShares": {
+            "protect": 0.4,
+            "balanced": 0.25,
+            "target": 0.15,
+            "chase": 0.1,
+            "thrill": 0.05,
+            "ev": 0.05
+          },
+          "turnoverShares": {
+            "protect": 0.15999648019472862,
+            "balanced": 0.3953934739417225,
+            "target": 0.10373429054150904,
+            "chase": 0.1114571742463398,
+            "thrill": 0.06952360582363083,
+            "ev": 0.15989497525206917
+          },
+          "rtp": 101.81610350951135,
+          "ci95HalfWidth": 0.027405571828133805,
+          "rawRtp": 101.89788037049105
+        },
+        {
+          "id": "engaged",
+          "label": "中間・目標型が多い構成",
+          "populationShares": {
+            "protect": 0.15,
+            "balanced": 0.3,
+            "target": 0.2,
+            "chase": 0.15,
+            "thrill": 0.1,
+            "ev": 0.1
+          },
+          "turnoverShares": {
+            "protect": 0.04619525371383834,
+            "balanced": 0.3653140733756834,
+            "target": 0.10649193981284794,
+            "chase": 0.12872264280490822,
+            "thrill": 0.10705770881008267,
+            "ev": 0.24621838148263953
+          },
+          "rtp": 102.23029671021166,
+          "ci95HalfWidth": 0.025644016756285738,
+          "rawRtp": 102.43886404791573
+        },
+        {
+          "id": "aggressive",
+          "label": "粘る人・期待値重視が多い構成",
+          "populationShares": {
+            "protect": 0.05,
+            "balanced": 0.1,
+            "target": 0.1,
+            "chase": 0.25,
+            "thrill": 0.2,
+            "ev": 0.3
+          },
+          "turnoverShares": {
+            "protect": 0.0113413458011711,
+            "balanced": 0.08968785533365058,
+            "target": 0.03921707807700195,
+            "chase": 0.15801277048228074,
+            "thrill": 0.15770172024393592,
+            "ev": 0.5440392300619598
+          },
+          "rtp": 102.95841561370568,
+          "ci95HalfWidth": 0.016692585372641698,
+          "rawRtp": 103.24591046305795
+        }
+      ]
+    },
+    {
+      "cashShift": -0.75,
+      "label": "全体的に続行しやすい",
+      "profiles": [
+        {
+          "id": "protect",
+          "label": "利益保全型",
+          "sessions": 1500,
+          "hands": 31273,
+          "wagers": 206168200,
+          "expected": {
+            "rtp": 100.75246610388704,
+            "ci95HalfWidth": 0.021966573525911633
+          },
+          "raw": {
+            "rtp": 99.4321495749587,
+            "ci95HalfWidth": 1.5852642624715463
+          },
+          "control": {
+            "rtp": 100.72678736121144,
+            "ci95HalfWidth": 0.033886393556156615
+          },
+          "unroundedRtp": 100.75623544271134,
+          "averageHands": 20.848666666666666,
+          "averageWager": 6592.530297700892,
+          "averageTurnover": 137445.46666666667,
+          "positiveSessionRate": 0.6473333333333333,
+          "brokeRate": 0,
+          "goalStopRate": 0.6433333333333333,
+          "lossStopRate": 0.31533333333333335,
+          "riskyGuessRate": 0,
+          "maxObservedPayout": 99244,
+          "terminalStreaks": [
+            15708,
+            5483,
+            5851,
+            3212,
+            905,
+            114
+          ],
+          "betTiers": {
+            "100": 3492,
+            "1000": 7999,
+            "10000": 19782
+          },
+          "aggregates": {
+            "sessions": 1500,
+            "hands": 31273,
+            "wagers": 206168200,
+            "expected": 207719545.82199404,
+            "unrounded": 207727317,
+            "paid": 204997473,
+            "cv": 207666604.42043713,
+            "w2": 82280583360000,
+            "e2": 83553312170965.02,
+            "ew": 82914242311982.39,
+            "p2": 75573147880901,
+            "pw": 77511751925500,
+            "c2": 83351164521736.61,
+            "cw": 82813538763209.02,
+            "goalStops": 965,
+            "lossStops": 473,
+            "broke": 0,
+            "positiveSessions": 971,
+            "net": -1170727,
+            "initial": 758765000,
+            "turns": 61210,
+            "risky": 0,
+            "maxPayout": 99244,
+            "terminalStreaks": [
+              15708,
+              5483,
+              5851,
+              3212,
+              905,
+              114
+            ],
+            "betTiers": {
+              "100": 3492,
+              "1000": 7999,
+              "10000": 19782
+            }
+          }
+        },
+        {
+          "id": "balanced",
+          "label": "バランス型",
+          "sessions": 1500,
+          "hands": 129779,
+          "wagers": 853849700,
+          "expected": {
+            "rtp": 102.26699374043365,
+            "ci95HalfWidth": 0.02633698002071203
+          },
+          "raw": {
+            "rtp": 103.07987623582933,
+            "ci95HalfWidth": 1.3015967346314656
+          },
+          "control": {
+            "rtp": 102.30042132860737,
+            "ci95HalfWidth": 0.03673109467425283
+          },
+          "unroundedRtp": 102.2690858238868,
+          "averageHands": 86.51933333333334,
+          "averageWager": 6579.2593562903085,
+          "averageTurnover": 569233.1333333333,
+          "positiveSessionRate": 0.55,
+          "brokeRate": 0,
+          "goalStopRate": 0.5253333333333333,
+          "lossStopRate": 0.39866666666666667,
+          "riskyGuessRate": 0.024756976421231123,
+          "maxObservedPayout": 712166,
+          "terminalStreaks": [
+            93129,
+            2837,
+            6031,
+            9824,
+            9990,
+            7968
+          ],
+          "betTiers": {
+            "100": 14427,
+            "1000": 33457,
+            "10000": 81895
+          },
+          "aggregates": {
+            "sessions": 1500,
+            "hands": 129779,
+            "wagers": 853849700,
+            "expected": 873206419.2517114,
+            "unrounded": 873224282.5,
+            "paid": 880147214,
+            "cv": 873491840.6130501,
+            "w2": 1224722307290000,
+            "e2": 1281964588038266.5,
+            "ew": 1253010291652375.2,
+            "p2": 1254971780165904,
+            "pw": 1224373528447200,
+            "c2": 1280980229012557.8,
+            "cw": 1252522999072746.5,
+            "goalStops": 788,
+            "lossStops": 598,
+            "broke": 0,
+            "positiveSessions": 825,
+            "net": 26297514,
+            "initial": 763031000,
+            "turns": 342045,
+            "risky": 8468,
+            "maxPayout": 712166,
+            "terminalStreaks": [
+              93129,
+              2837,
+              6031,
+              9824,
+              9990,
+              7968
+            ],
+            "betTiers": {
+              "100": 14427,
+              "1000": 33457,
+              "10000": 81895
+            }
+          }
+        },
+        {
+          "id": "target",
+          "label": "目標利益型",
+          "sessions": 1500,
+          "hands": 61584,
+          "wagers": 433762800,
+          "expected": {
+            "rtp": 102.99991911829913,
+            "ci95HalfWidth": 0.018485514293582844
+          },
+          "raw": {
+            "rtp": 102.40642351072984,
+            "ci95HalfWidth": 2.2026336142496428
+          },
+          "control": {
+            "rtp": 102.9817951378665,
+            "ci95HalfWidth": 0.07226357088249404
+          },
+          "unroundedRtp": 103.00136318743793,
+          "averageHands": 41.056,
+          "averageWager": 7043.433359314107,
+          "averageTurnover": 289175.2,
+          "positiveSessionRate": 0.6766666666666666,
+          "brokeRate": 0,
+          "goalStopRate": 0.6766666666666666,
+          "lossStopRate": 0.314,
+          "riskyGuessRate": 0.017578985527453222,
+          "maxObservedPayout": 648463,
+          "terminalStreaks": [
+            48659,
+            209,
+            747,
+            1657,
+            2842,
+            7470
+          ],
+          "betTiers": {
+            "100": 6028,
+            "1000": 13600,
+            "10000": 41956
+          },
+          "aggregates": {
+            "sessions": 1500,
+            "hands": 61584,
+            "wagers": 433762800,
+            "expected": 446775333.1652697,
+            "unrounded": 446781597,
+            "paid": 444200970,
+            "cv": 446696718.08027357,
+            "w2": 409314222840000,
+            "e2": 434909210616703.25,
+            "ew": 421916989151354.56,
+            "p2": 379142784543642,
+            "pw": 383104812208600,
+            "c2": 432224910774373.94,
+            "cw": 420602166739330.75,
+            "goalStops": 1015,
+            "lossStops": 471,
+            "broke": 0,
+            "positiveSessions": 1015,
+            "net": 10438170,
+            "initial": 854773000,
+            "turns": 179305,
+            "risky": 3152,
+            "maxPayout": 648463,
+            "terminalStreaks": [
+              48659,
+              209,
+              747,
+              1657,
+              2842,
+              7470
+            ],
+            "betTiers": {
+              "100": 6028,
+              "1000": 13600,
+              "10000": 41956
+            }
+          }
+        },
+        {
+          "id": "chase",
+          "label": "損失回復型",
+          "sessions": 1500,
+          "hands": 76933,
+          "wagers": 732208600,
+          "expected": {
+            "rtp": 102.9790262676183,
+            "ci95HalfWidth": 0.03141907945298954
+          },
+          "raw": {
+            "rtp": 105.06241349801135,
+            "ci95HalfWidth": 1.865330731295155
+          },
+          "control": {
+            "rtp": 103.04842130789757,
+            "ci95HalfWidth": 0.051399261679058075
+          },
+          "unroundedRtp": 102.980052678977,
+          "averageHands": 51.288666666666664,
+          "averageWager": 9517.484044558252,
+          "averageTurnover": 488139.06666666665,
+          "positiveSessionRate": 0.6953333333333334,
+          "brokeRate": 0.011333333333333334,
+          "goalStopRate": 0.6926666666666667,
+          "lossStopRate": 0.2833333333333333,
+          "riskyGuessRate": 0.03536300086184489,
+          "maxObservedPayout": 1415879,
+          "terminalStreaks": [
+            61059,
+            543,
+            1377,
+            2225,
+            2561,
+            9168
+          ],
+          "betTiers": {
+            "100": 976,
+            "1000": 3051,
+            "10000": 72906
+          },
+          "aggregates": {
+            "sessions": 1500,
+            "hands": 76933,
+            "wagers": 732208600,
+            "expected": 754021286.5277601,
+            "unrounded": 754028802,
+            "paid": 769276027,
+            "cv": 754529402.9806585,
+            "w2": 1386142267260000,
+            "e2": 1474740126895718,
+            "ew": 1429750291568713.5,
+            "p2": 1342548868627717,
+            "pw": 1343992294904800,
+            "c2": 1469365585412386.5,
+            "cw": 1427130084516328,
+            "goalStops": 1039,
+            "lossStops": 425,
+            "broke": 17,
+            "positiveSessions": 1043,
+            "net": 37067427,
+            "initial": 789559000,
+            "turns": 219297,
+            "risky": 7755,
+            "maxPayout": 1415879,
+            "terminalStreaks": [
+              61059,
+              543,
+              1377,
+              2225,
+              2561,
+              9168
+            ],
+            "betTiers": {
+              "100": 976,
+              "1000": 3051,
+              "10000": 72906
+            }
+          }
+        },
+        {
+          "id": "thrill",
+          "label": "高配当志向型",
+          "sessions": 1500,
+          "hands": 155269,
+          "wagers": 1046806300,
+          "expected": {
+            "rtp": 103.3218828578517,
+            "ci95HalfWidth": 0.006193811248967106
+          },
+          "raw": {
+            "rtp": 102.9055380159634,
+            "ci95HalfWidth": 4.335895784844168
+          },
+          "control": {
+            "rtp": 103.30458366785396,
+            "ci95HalfWidth": 0.1582913084888033
+          },
+          "unroundedRtp": 103.32254587118935,
+          "averageHands": 103.51266666666666,
+          "averageWager": 6741.8885933444535,
+          "averageTurnover": 697870.8666666667,
+          "positiveSessionRate": 0.2846666666666667,
+          "brokeRate": 0,
+          "goalStopRate": 0.27,
+          "lossStopRate": 0.5906666666666667,
+          "riskyGuessRate": 0.22842534321280986,
+          "maxObservedPayout": 8182066,
+          "terminalStreaks": [
+            141243,
+            259,
+            397,
+            569,
+            909,
+            11892
+          ],
+          "betTiers": {
+            "100": 16623,
+            "1000": 37924,
+            "10000": 100722
+          },
+          "aggregates": {
+            "sessions": 1500,
+            "hands": 155269,
+            "wagers": 1046806300,
+            "expected": 1081579979.0346117,
+            "unrounded": 1081586919.5,
+            "paid": 1077221655,
+            "cv": 1081398890.0238662,
+            "w2": 2056526267530000,
+            "e2": 2195693645458983.8,
+            "ew": 2124970452727699,
+            "p2": 2291860192406347,
+            "pw": 1911327159146300,
+            "c2": 2180377353743479,
+            "cw": 2117212165108710.2,
+            "goalStops": 405,
+            "lossStops": 886,
+            "broke": 0,
+            "positiveSessions": 427,
+            "net": 30415355,
+            "initial": 787142000,
+            "turns": 390574,
+            "risky": 89217,
+            "maxPayout": 8182066,
+            "terminalStreaks": [
+              141243,
+              259,
+              397,
+              569,
+              909,
+              11892
+            ],
+            "betTiers": {
+              "100": 16623,
+              "1000": 37924,
+              "10000": 100722
+            }
+          }
+        },
+        {
+          "id": "ev",
+          "label": "期待値重視型",
+          "sessions": 1500,
+          "hands": 371125,
+          "wagers": 2516635000,
+          "expected": {
+            "rtp": 103.4987067473382,
+            "ci95HalfWidth": 0.00004775052262980914
+          },
+          "raw": {
+            "rtp": 103.97336328073001,
+            "ci95HalfWidth": 0.9766713869042222
+          },
+          "control": {
+            "rtp": 103.51705069378818,
+            "ci95HalfWidth": 0.0377419599558334
+          },
+          "unroundedRtp": 103.5,
+          "averageHands": 247.41666666666666,
+          "averageWager": 6781.098012798922,
+          "averageTurnover": 1677756.6666666667,
+          "positiveSessionRate": 0.508,
+          "brokeRate": 0.2613333333333333,
+          "goalStopRate": 0,
+          "lossStopRate": 0.034,
+          "riskyGuessRate": 0,
+          "maxObservedPayout": 242255,
+          "terminalStreaks": [
+            304237,
+            0,
+            0,
+            0,
+            0,
+            66888
+          ],
+          "betTiers": {
+            "100": 35110,
+            "1000": 94114,
+            "10000": 241901
+          },
+          "aggregates": {
+            "sessions": 1500,
+            "hands": 371125,
+            "wagers": 2516635000,
+            "expected": 2604684678.5508747,
+            "unrounded": 2604717225,
+            "paid": 2616630051,
+            "cv": 2605146328.7276163,
+            "w2": 6971339983060000,
+            "e2": 7467744898034448,
+            "ew": 7215274671772518,
+            "p2": 7920568390168347,
+            "pw": 7357533513685500,
+            "c2": 7479360579527318,
+            "cw": 7220771940049919,
+            "goalStops": 0,
+            "lossStops": 51,
+            "broke": 392,
+            "positiveSessions": 762,
+            "net": 99995051,
+            "initial": 776309000,
+            "turns": 1148255,
+            "risky": 0,
+            "maxPayout": 242255,
+            "terminalStreaks": [
+              304237,
+              0,
+              0,
+              0,
+              0,
+              66888
+            ],
+            "betTiers": {
+              "100": 35110,
+              "1000": 94114,
+              "10000": 241901
+            }
+          }
+        }
+      ],
+      "mixtures": [
+        {
+          "id": "equal",
+          "label": "6タイプを同人数ずつ",
+          "populationShares": {
+            "protect": 0.16666666666666666,
+            "balanced": 0.16666666666666666,
+            "target": 0.16666666666666666,
+            "chase": 0.16666666666666666,
+            "thrill": 0.16666666666666666,
+            "ev": 0.16666666666666666
+          },
+          "turnoverShares": {
+            "protect": 0.03561113592068968,
+            "balanced": 0.14748422755080612,
+            "target": 0.07492322301954876,
+            "chase": 0.12647333573702393,
+            "thrill": 0.18081334285274964,
+            "ev": 0.4346947349191818
+          },
+          "rtp": 103.084183138014,
+          "ci95HalfWidth": 0.013166195528747487,
+          "rawRtp": 103.50712883577877
+        },
+        {
+          "id": "cautious",
+          "label": "慎重な人が多い構成",
+          "populationShares": {
+            "protect": 0.4,
+            "balanced": 0.25,
+            "target": 0.15,
+            "chase": 0.1,
+            "thrill": 0.05,
+            "ev": 0.05
+          },
+          "turnoverShares": {
+            "protect": 0.13466529052173784,
+            "balanced": 0.3485743615904353,
+            "target": 0.10624721734399838,
+            "chase": 0.11956631022814738,
+            "thrill": 0.08546933675361032,
+            "ev": 0.20547748356207074
+          },
+          "rtp": 102.56929578255554,
+          "ci95HalfWidth": 0.02353875534447901,
+          "rawRtp": 102.92283715013244
+        },
+        {
+          "id": "engaged",
+          "label": "中間・目標型が多い構成",
+          "populationShares": {
+            "protect": 0.15,
+            "balanced": 0.3,
+            "target": 0.2,
+            "chase": 0.15,
+            "thrill": 0.1,
+            "ev": 0.1
+          },
+          "turnoverShares": {
+            "protect": 0.03681539411785686,
+            "balanced": 0.30494337364262625,
+            "target": 0.10327585880955532,
+            "chase": 0.13075027179499168,
+            "thrill": 0.12461859297264889,
+            "ev": 0.299596508662321
+          },
+          "rtp": 102.8805034669878,
+          "ci95HalfWidth": 0.01737188875344198,
+          "rawRtp": 103.38120943402309
+        },
+        {
+          "id": "aggressive",
+          "label": "粘る人・期待値重視が多い構成",
+          "populationShares": {
+            "protect": 0.05,
+            "balanced": 0.1,
+            "target": 0.1,
+            "chase": 0.25,
+            "thrill": 0.2,
+            "ev": 0.3
+          },
+          "turnoverShares": {
+            "protect": 0.008012920156610757,
+            "balanced": 0.06637133633456613,
+            "target": 0.03371719482740714,
+            "chase": 0.14228986453254536,
+            "thrill": 0.1627404284722305,
+            "ev": 0.5868682556766401
+          },
+          "rtp": 103.27541152181794,
+          "ci95HalfWidth": 0.008000281113642186,
+          "rawRtp": 103.80602262198049
+        }
+      ]
+    }
+  ],
+  "completedAt": "2026-10-03T07:35:50.660Z",
+  "totalSessions": 36000,
+  "ordinaryGames": 3510601,
+  "weightedTrajectories": 3510601
+}

@@ -11,6 +11,7 @@ export interface DiscordActivitySession {
 }
 
 export interface BalanceResult {
+  walletMode: 'real' | 'virtual';
   accountFound: boolean;
   wallet: string | null;
 }

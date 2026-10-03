@@ -43,6 +43,7 @@ const visitorId = '123456789012345678';
 const protectedRoutes = [
   ['GET', '/api/balance', 'readWallet'],
   ['GET', '/api/high-low/stats', 'readBestStreak'],
+  ['GET', '/api/high-low/leaderboard', 'readLeaderboard'],
   ['GET', '/api/high-low/session', 'readSession'],
   ['POST', '/api/high-low/start', 'start'],
   ['POST', '/api/high-low/1/guess', 'guess'],
@@ -140,6 +141,27 @@ test('stats uses the verified Discord identity, ignores supplied identity and pr
   assert.deepEqual(userIds, ['123456789012345678']);
 });
 
+test('leaderboard uses verified identity and returns mode without exposing other personal ranks', async () => {
+  const calls = [];
+  const api = createActivityApi({ env: { ACTIVITY_ACCESS_MODE: 'private', ACTIVITY_ALLOWED_USER_IDS: ownerId, HIGH_LOW_WALLET_MODE: 'virtual' },
+    highLowStore: { async readLeaderboard(userId) { calls.push(userId); return { streak: { entries: [], me: null, participants: 0 } }; } },
+    fetchImpl: async () => new Response(JSON.stringify({ id: ownerId })),
+  });
+  const res = response();
+  await api.handle(request('GET', { authorization: 'Bearer test' }), res,
+    new URL(`http://local/.proxy/api/high-low/leaderboard?userId=${visitorId}`));
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.json().walletMode, 'virtual');
+  assert.deepEqual(calls, [ownerId]);
+  assert.equal(res.headers['Cache-Control'], 'no-store');
+  for (const [method, headers, expected] of [['GET', {}, 401], ['POST', { authorization: 'Bearer test', 'x-high-low-wallet-mode': 'virtual' }, 405]]) {
+    const rejected = response();
+    await api.handle(request(method, headers), rejected, new URL('http://local/api/high-low/leaderboard'));
+    assert.equal(rejected.statusCode, expected);
+  }
+  assert.equal(calls.length, 1);
+});
+
 test('stats rejects unauthenticated reads and does not accept score writes', async () => {
   const api = createActivityApi({ env: { ACTIVITY_ACCESS_MODE: 'public' }, highLowStore: closedHighLowStore,
     fetchImpl: async () => new Response(JSON.stringify({ id: '123456789012345678' })),
@@ -215,7 +237,7 @@ test('balance uses the Discord-verified user id for the read-only lookup', async
   );
 
   assert.equal(res.statusCode, 200);
-  assert.deepEqual(res.json(), { accountFound: true, wallet: '1234' });
+  assert.deepEqual(res.json(), { accountFound: true, wallet: '1234', walletMode: 'real' });
   assert.deepEqual(lookedUpUserIds, ['123456789012345678']);
 });
 
@@ -256,4 +278,27 @@ test('high-low start uses only the Discord-verified user id', async () => {
   );
   assert.equal(res.statusCode, 201);
   assert.deepEqual(starts, [{ userId: '123456789012345678', wager: 100, requestId }]);
+});
+
+test('virtual play requires private participants and rejects stale real-wallet requests', async () => {
+  for (const env of [
+    { HIGH_LOW_WALLET_MODE: 'typo' },
+    { HIGH_LOW_WALLET_MODE: 'virtual', ACTIVITY_ACCESS_MODE: 'public', ACTIVITY_ALLOWED_USER_IDS: ownerId },
+    { HIGH_LOW_WALLET_MODE: 'virtual' },
+  ]) assert.throws(() => createActivityApi({ env, highLowStore: closedHighLowStore }));
+  const calls = [];
+  const api = createActivityApi({
+    env: { HIGH_LOW_WALLET_MODE: 'virtual', ACTIVITY_ALLOWED_USER_IDS: ownerId },
+    highLowStore: { async start(input) { calls.push(input); return {}; } },
+    fetchImpl: async () => new Response(JSON.stringify({ id: ownerId })),
+  });
+  for (const mode of [undefined, 'real', 'virtual']) {
+    const res = response();
+    await api.handle(request('POST', {
+      authorization: 'Bearer test', 'content-type': 'application/json',
+      ...(mode ? { 'x-high-low-wallet-mode': mode } : {}),
+    }, validBody), res, new URL('http://local/api/high-low/start'));
+    assert.equal(res.statusCode, mode === 'virtual' ? 201 : 409);
+  }
+  assert.equal(calls.length, 1);
 });

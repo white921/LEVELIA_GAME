@@ -703,6 +703,7 @@ h1 span:last-child { color: var(--forest); }
 }
 .cashout-button:active:not(:disabled) { box-shadow: inset 0 2px 6px rgba(0,0,0,.2); }
 .cashout-button:disabled { cursor: wait; opacity: .55; }
+.cashout-amount { display: block; margin-top: 3px; font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; white-space: normal; }
 .cashout-icon { color: #f4d994; font-size: 18px; line-height: 1; }
 
 .real-play-notice {
@@ -743,6 +744,7 @@ h1 span:last-child { color: var(--forest); }
 
 .continuation-offer > div > span { color: var(--ink-soft); font-size: 10px; font-weight: 800; letter-spacing: .06em; }
 .continuation-offer strong { color: var(--forest); font-size: 16px; }
+.continuation-offer .cashout-amount { color: inherit; font-size: 12px; }
 .continuation-offer small { color: var(--gold); font-size: 9px; font-weight: 800; }
 .continuation-offer .continuation-next { background: rgba(169, 121, 47, .08); border-radius: 9px; }
 .continuation-offer .cashout-button { align-self: stretch; min-height: 72px; }
@@ -1391,7 +1393,11 @@ h1 span:last-child { color: var(--forest); }
   letter-spacing: .1em;
 }
 
-.guess-button small { display: block; margin-top: 2px; color: var(--muted); font-size: 11px; }
+.guess-button small { display: block; margin-top: 2px; color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
+.guess-button > span:nth-child(2) { min-width: 0; }
+.guess-button.has-offer { padding-block: 12px; row-gap: 8px; }
+.guess-offer { grid-column: 1 / -1; min-width: 0; font-size: 10px; text-align: center; overflow-wrap: anywhere; }
+.guess-offer strong { display: block; color: var(--forest); font-size: 13px; }
 
 .guess-icon {
   width: 36px;
@@ -1622,3 +1628,6 @@ kbd {
 
   .fate-overlay { backdrop-filter: brightness(.88); }
 }
+
+/* Keep the test-mode notice readable on narrow Activity screens. */
+.account-panel.is-virtual .account-copy small { white-space: normal; overflow: visible; }

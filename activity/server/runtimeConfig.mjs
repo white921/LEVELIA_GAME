@@ -35,3 +35,13 @@ export function readMysqlUrl(env = process.env) {
 
   return `mysql://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:${port}/${encodeURIComponent(database)}`;
 }
+
+export function readWalletMode(env = process.env) {
+  const mode = optional(env, 'HIGH_LOW_WALLET_MODE') ?? 'real';
+  if (!['real', 'virtual'].includes(mode)) throw new Error('HIGH_LOW_WALLET_MODE must be real or virtual');
+  if (mode === 'virtual' && ((optional(env, 'ACTIVITY_ACCESS_MODE') ?? 'private') !== 'private'
+    || !optional(env, 'ACTIVITY_ALLOWED_USER_IDS'))) {
+    throw new Error('Virtual play requires a private, nonempty participant allowlist');
+  }
+  return mode;
+}

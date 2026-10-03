@@ -1,0 +1,103 @@
+.weekly-dialog { width: min(1120px, calc(100% - 24px)); max-width: none; max-height: calc(100dvh - 24px); padding: 0; border: 1px solid #ded9ce; border-radius: 18px; color: var(--ink); background: linear-gradient(#f8f7f2df, #f8f7f2ed), url('/images/levelia-guild-vista.jpg') center / cover; box-shadow: 0 24px 80px #3c382433; overscroll-behavior: contain; }
+.weekly-dialog::backdrop { background: #e5e4dcc4; backdrop-filter: blur(5px); }
+.weekly-screen { padding: 20px 30px 18px; }
+.weekly-masthead { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.weekly-close { display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border: 1px solid var(--line); border-radius: 10px; color: var(--ink-soft); background: var(--paper); box-shadow: 0 3px 10px #3e433c0d; font-size: 28px; cursor: pointer; }
+.weekly-close:hover { border-color: var(--line-gold); background: #fffdf8; }
+.weekly-heading { margin: -16px 0 22px; text-align: center; pointer-events: none; }
+.weekly-heading h2 { display: flex; align-items: baseline; justify-content: center; flex-wrap: wrap; margin: 0; font-family: 'Iowan Old Style', 'Yu Mincho', YuMincho, Georgia, serif; font-size: clamp(27px, 4.3vw, 48px); font-weight: 600; letter-spacing: -.045em; line-height: 1.15; }
+.weekly-heading h2 i { color: #c7bda9; font-style: normal; font-weight: 400; }
+.weekly-low { color: var(--forest); }
+.weekly-title-jp { margin-left: .12em; font-size: .78em; letter-spacing: -.04em; }
+.weekly-period { margin: 9px 0 0; color: var(--ink-soft); font-size: 15px; font-variant-numeric: tabular-nums; letter-spacing: .04em; }
+.weekly-papers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.weekly-paper { position: relative; min-width: 0; padding: 38px 32px 25px; color: #3b2817; background: url('/images/ranking-parchment.webp') center / 100% 100% no-repeat; filter: drop-shadow(0 7px 5px #45321718); }
+.weekly-pin { position: absolute; top: 1.6%; left: calc(50% - 13px); width: 26px; height: 26px; border: 2px solid #806022; border-radius: 50%; background: radial-gradient(circle at 34% 27%, #f5e3a8 0, #d3ae57 22%, #926527 54%, #4a371b 78%); box-shadow: inset 0 0 0 2px #edcd7880, 1px 3px 4px #42290a60; }
+.weekly-paper-heading h3 { margin: 0; text-align: center; font-family: 'Iowan Old Style', 'Yu Mincho', YuMincho, Georgia, serif; font-size: clamp(23px, 2.7vw, 32px); font-weight: 700; letter-spacing: .02em; line-height: 1.3; }
+.weekly-paper-heading p { display: flex; align-items: center; gap: 12px; margin: 9px 0 13px; font-family: Georgia, serif; font-size: 11px; letter-spacing: .25em; white-space: nowrap; }
+.weekly-paper-heading p span { flex: 1; height: 1px; background: linear-gradient(90deg, transparent, #a88548b0); }
+.weekly-paper-heading p span:last-child { transform: rotate(180deg); }
+.weekly-records { margin: 0; padding: 0; list-style: none; }
+.weekly-record { display: grid; grid-template-columns: 34px 66px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 112px; border-bottom: 1px solid #9d794045; }
+.weekly-record:last-child { border-bottom: 0; }
+.weekly-rank { position: relative; text-align: center; color: #a16d45; font-family: Georgia, serif; font-size: 37px; line-height: 1; }
+.weekly-rank svg { position: absolute; bottom: calc(100% + 2px); left: 6px; width: 22px; height: 16px; }
+.weekly-dialog .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.weekly-medal-1 .weekly-rank { color: #99702e; }
+.weekly-medal-2 .weekly-rank { color: #84817a; }
+.weekly-portrait { display: grid; place-items: center; width: 66px; height: 66px; overflow: hidden; border: 2px solid #977135; border-radius: 50%; background: #e8ddbd; box-shadow: 0 0 0 2px #edd394, 0 0 0 3px #987648a6, 1px 3px 5px #543c2936; color: #6b684d; font-family: 'Yu Mincho', serif; font-size: 24px; }
+.weekly-portrait img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.weekly-player-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'Iowan Old Style', 'Yu Mincho', YuMincho, Georgia, serif; font-size: 22px; font-weight: 600; }
+.weekly-score { display: flex; align-items: baseline; justify-content: flex-end; gap: 4px; white-space: nowrap; font-family: 'Iowan Old Style', 'Yu Mincho', YuMincho, Georgia, serif; font-variant-numeric: tabular-nums; }
+.weekly-score strong { font-size: 32px; font-weight: 600; letter-spacing: -.045em; }
+.weekly-score small { font-size: 16px; font-weight: 600; }
+.weekly-score[data-long=true] strong { font-size: 21px; }
+.weekly-record.is-empty { color: #796b52; }
+.weekly-record.is-empty .weekly-player-name { font-size: 14px; font-weight: 400; }
+.weekly-portrait-empty { opacity: .45; }
+.weekly-footer { text-align: center; color: var(--muted); font-size: 11px; line-height: 1.7; }
+.weekly-footer > p { margin: 16px 0 4px; letter-spacing: .04em; }
+.weekly-footer details { max-width: 740px; margin: auto; }
+.weekly-footer summary { cursor: pointer; width: fit-content; margin: auto; font-size: 10px; }
+.weekly-footer details p { text-align: left; padding: 8px 12px; background: #fffefbba; border-radius: 6px; }
+.weekly-message, .weekly-test-label { margin: 0 0 12px; text-align: center; color: var(--ink-soft); font-size: 12px; }
+.weekly-test-label { color: #836122; }
+.weekly-error { margin: 0 0 12px; padding: 8px 12px; border: 1px solid #d9c4a8; border-radius: 7px; color: #8c643e; background: #fff6e9; font-size: 12px; }
+.weekly-error button { margin-left: 8px; border: 0; color: inherit; background: transparent; text-decoration: underline; cursor: pointer; }
+.ranking-button { color: #806127; border-color: #cbb787; }
+.high-low-ranking-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; margin-top: 16px; padding: 9px 18px; border: 1px solid var(--line-gold); border-radius: 9px; background: #fffefbd9; color: #806127; font-size: 12px; font-weight: 600; box-shadow: 0 3px 12px #7457230a; cursor: pointer; }
+.high-low-ranking-button svg { width: 16px; height: 16px; }
+.high-low-ranking-button:hover { background: #fffaf0; border-color: var(--gold); }
+@media (max-width: 850px) and (min-width: 641px) {
+  .weekly-screen { padding: 18px; }
+  .weekly-heading { margin-top: 12px; }
+  .weekly-paper { padding: 32px 19px 18px; }
+  .weekly-paper-heading h3 { font-size: 23px; }
+  .weekly-record { grid-template-columns: 24px 46px minmax(0, 1fr) auto; gap: 8px; min-height: 94px; }
+  .weekly-portrait { width: 46px; height: 46px; }
+  .weekly-player-name { font-size: 17px; }
+  .weekly-score strong { font-size: 24px; }
+  .weekly-score small { font-size: 12px; }
+  .weekly-score[data-long=true] strong { font-size: 15px; }
+}
+@media (max-width: 640px) {
+  .weekly-dialog { width: 100%; height: 100dvh; max-height: 100dvh; margin: 0; border: 0; border-radius: 0; }
+  .weekly-screen { width: min(100%, 480px); margin: auto; padding: max(12px, env(safe-area-inset-top)) 12px max(10px, env(safe-area-inset-bottom)); }
+  .weekly-masthead .brand-mark { width: 30px; height: 30px; border-radius: 7px; }
+  .weekly-masthead .brand { gap: 8px; }
+  .weekly-masthead .brand-name { font-size: 12px; }
+  .weekly-masthead .brand-subtitle { font-size: 6px; }
+  .weekly-close { width: 34px; height: 34px; font-size: 25px; }
+  .weekly-heading { margin: 13px 0 11px; }
+  .weekly-heading h2 { font-size: clamp(26px, 7.4vw, 36px); }
+  .weekly-period { margin-top: 6px; font-size: 12px; }
+  .weekly-papers { grid-template-columns: minmax(0, 1fr); gap: 9px; }
+  .weekly-paper { padding: 25px 22px 12px; }
+  .weekly-pin { width: 20px; height: 20px; left: calc(50% - 10px); top: 1.3%; }
+  .weekly-paper-heading h3 { font-size: clamp(22px, 5.7vw, 27px); }
+  .weekly-paper-heading p { margin: 4px 0 2px; gap: 10px; font-size: 8px; }
+  .weekly-record { grid-template-columns: 24px 43px minmax(0, 1fr) auto; gap: 9px; min-height: 59px; }
+  .weekly-rank { font-size: 28px; }
+  .weekly-rank svg { width: 16px; height: 12px; left: 4px; bottom: calc(100% - 1px); }
+  .weekly-portrait { width: 43px; height: 43px; font-size: 19px; }
+  .weekly-player-name { font-size: 18px; }
+  .weekly-score strong { font-size: 25px; }
+  .weekly-score small { font-size: 12px; }
+  .weekly-score[data-long=true] strong { font-size: 16px; }
+  .weekly-footer > p { margin-top: 10px; }
+  .weekly-footer { font-size: 10px; }
+  .weekly-record.is-empty .weekly-player-name { font-size: 12px; }
+  .site-header { flex-wrap: wrap; gap: 10px; padding-block: 12px; }
+  .header-actions { margin-left: auto; gap: 5px; }
+  .header-actions .ranking-button { padding-inline: 8px; font-size: 11px; }
+}
+@media (max-width: 360px) {
+  .weekly-screen { padding-inline: 8px; }
+  .weekly-paper { padding-inline: 17px; }
+  .weekly-record { gap: 7px; grid-template-columns: 21px 36px minmax(0, 1fr) auto; min-height: 55px; }
+  .weekly-portrait { width: 36px; height: 36px; }
+  .weekly-player-name { font-size: 16px; }
+  .weekly-score strong { font-size: 22px; }
+  .weekly-score[data-long=true] strong { font-size: 13px; }
+  .weekly-score small { font-size: 11px; }
+}

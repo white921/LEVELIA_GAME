@@ -39,6 +39,7 @@ interface AccountPanelProps {
 
 export function AccountPanel({ onSessionChange, balanceRefreshKey }: AccountPanelProps) {
   const inDiscord = isDiscordActivityContext();
+  const [virtual, setVirtual] = useState(false);
   const [session, setSession] = useState<DiscordActivitySession | null>(null);
   const [name, setName] = useState(inDiscord ? 'Discordに接続中…' : 'ブラウザプレビュー');
   const [status, setStatus] = useState(inDiscord
@@ -55,9 +56,10 @@ export function AccountPanel({ onSessionChange, balanceRefreshKey }: AccountPane
     setBalance('確認中…');
     try {
       const result = await fetchBalance(activeSession.accessToken);
+      setVirtual(result.walletMode === 'virtual');
       setBalance(result.accountFound && result.wallet !== null ? formatWallet(result.wallet) : '口座なし');
       setStatus(result.accountFound
-        ? `@${activeSession.user.username} と連携済み`
+        ? result.walletMode === 'virtual' ? '仮想残高テスト・実際のLIAは増減しません' : `@${activeSession.user.username} と連携済み`
         : 'LEVELIAの口座が見つかりません');
     } catch (error) {
       console.error('Balance lookup failed', { statusCode: error instanceof ActivityApiError ? error.statusCode : null });
@@ -98,14 +100,14 @@ export function AccountPanel({ onSessionChange, balanceRefreshKey }: AccountPane
       onSessionChange(null);
       const connectionError = error instanceof DiscordActivityConnectionError ? error : null;
       const configurationPending = connectionError?.message === 'DISCORD_AUTH_NOT_CONFIGURED';
-      const accessDenied = connectionError?.message === '現在は開発者のみプレイできます';
+      const accessDenied = connectionError?.message === '現在は許可されたテスト参加者のみプレイできます';
       setName(configurationPending
         ? '残高連携の設定待ち'
         : accessDenied ? '現在はテスト中です'
           : `Discord認証：${connectionError ? stageNames[connectionError.stage] : '不明'}で停止`);
       setStatus(configurationPending
         ? '運営者の設定が完了するとプレイできます'
-        : accessDenied ? '現在は開発者のみプレイできます'
+        : accessDenied ? '現在は許可されたテスト参加者のみプレイできます'
           : '再試行しても続く場合は、この表示を管理者へ伝えてください');
       setBalance('— LIA');
       setBusy(false);
@@ -125,6 +127,7 @@ export function AccountPanel({ onSessionChange, balanceRefreshKey }: AccountPane
   const avatarFallback = session?.user.displayName.slice(0, 1).toUpperCase() ?? 'L';
   const className = [
     'account-panel',
+    virtual ? 'is-virtual' : '',
     variant === 'standalone' ? 'is-standalone' : '',
     variant === 'connected' ? 'is-connected' : '',
     variant === 'error' ? 'is-error' : '',
@@ -143,7 +146,7 @@ export function AccountPanel({ onSessionChange, balanceRefreshKey }: AccountPane
         </span>
       </div>
       <div className="balance-display">
-        <span>所持LIA</span>
+        <span>{virtual ? '仮想残高（テスト）' : '所持LIA'}</span>
         <strong aria-live="polite">{balance}</strong>
       </div>
       {inDiscord ? (

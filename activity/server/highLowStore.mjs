@@ -1,16 +1,17 @@
+import { correctionForTarget, RTP_CALIBRATION_ID } from './highLowCalibration.mjs';
+import { createHighLowLeaderboard } from './highLowLeaderboard.mjs';
 import { createPool } from 'mysql2/promise';
 import { ApiError } from './http.mjs';
 import { errorMetadata } from './safeLog.mjs';
 import {
-  calculatePayout,
-  cardFromId,
-  createSecureDeck,
+  advancePayoutState, createPayoutState, displayMultiplier, parsePayoutState,
+  progressiveOffers, progressivePayout, validateCorrectionPpm,
+} from './highLowPayout.mjs';
+import {
   drawActionableCard,
   HIGH_LOW_MAX_STREAK,
   HIGH_LOW_RULES_VERSION,
   HIGH_LOW_WAGERS,
-  nextWinOffer,
-  payoutMultiplier,
   publicCard,
   resolveServerGuess,
 } from './highLowRules.mjs';
@@ -24,26 +25,12 @@ const MAX_INTEGER_WALLET = 2_147_483_647;
 
 const handColumns = `
   id, user_id, status, wager, streak, potential_payout, current_card,
-  remaining_deck, rules_version, version, settlement_amount, settlement_reason,
+  payout_state, rules_version, version, settlement_amount, settlement_reason,
   TIMESTAMPDIFF(MICROSECOND, '1970-01-01 00:00:00', last_heartbeat_at) DIV 1000 AS last_heartbeat_ms,
   TIMESTAMPDIFF(MICROSECOND, '1970-01-01 00:00:00', expires_at) DIV 1000 AS expires_ms`;
 
 function parseJson(value) {
   return typeof value === 'string' ? JSON.parse(value) : value;
-}
-
-function parseDeck(value) {
-  const deck = parseJson(value);
-  if (!Array.isArray(deck) || deck.some(cardId => typeof cardId !== 'string')) {
-    throw new Error('Stored high-low deck is invalid');
-  }
-  const known = new Set();
-  for (const cardId of deck) {
-    cardFromId(cardId);
-    if (known.has(cardId)) throw new Error('Stored high-low deck contains duplicate cards');
-    known.add(cardId);
-  }
-  return deck;
 }
 
 function deadlineIso(row) {
@@ -54,15 +41,20 @@ function deadlineIso(row) {
 
 function toPublicHand(row) {
   const streak = Number(row.streak);
-  const nextWin = nextWinOffer(Number(row.wager), streak);
+  const wager = Number(row.wager);
+  if (Number(row.rules_version) !== HIGH_LOW_RULES_VERSION) throw new Error('Unsupported high-low rules version');
+  const offers = progressiveOffers({ wager, streak, currentCardId: row.current_card,
+    state: parsePayoutState(row.payout_state) });
+  for (const offer of Object.values(offers)) {
+    if (offer.payout > MAX_INTEGER_WALLET) offer.available = false;
+  }
   return {
     id: String(row.id),
     wager: Number(row.wager),
     streak,
     potentialPayout: Number(row.potential_payout),
-    multiplier: payoutMultiplier(streak),
-    nextWinPayout: nextWin.payout,
-    nextWinMultiplier: nextWin.multiplier,
+    multiplier: displayMultiplier(Number(row.potential_payout), wager),
+    nextWinOffers: offers,
     currentCard: publicCard(row.current_card),
     version: Number(row.version),
     rulesVersion: Number(row.rules_version),
@@ -82,12 +74,20 @@ function isDuplicateEntry(error) {
 }
 
 export function createHighLowStore(mysqlUrl, {
+  walletMode = 'real',
   poolFactory = options => createPool(options),
   randomIndex,
   workerIntervalMs = 15_000,
 } = {}) {
+  if (!['real', 'virtual'].includes(walletMode)) throw new Error('Invalid high-low wallet mode');
+  const virtual = walletMode === 'virtual';
+  const tables = Object.fromEntries(['hands', 'commands', 'ledger', 'settings', 'setting_changes']
+    .map(name => [name, `levelia_game_high_low_${virtual ? 'virtual_' : ''}${name}`]));
+  const walletTable = virtual ? 'levelia_game_high_low_virtual_wallets' : 'accounts';
   let pool = null;
   let worker = null;
+  let expirationCursor = '0';
+  let expirationRun = null;
 
   function getPool() {
     if (!mysqlUrl) {
@@ -95,7 +95,7 @@ export function createHighLowStore(mysqlUrl, {
     }
     pool ??= poolFactory({
       uri: mysqlUrl,
-      connectionLimit: 6,
+      connectionLimit: 20,
       connectTimeout: 10_000,
       supportBigNumbers: true,
       bigNumberStrings: true,
@@ -114,7 +114,7 @@ export function createHighLowStore(mysqlUrl, {
 
   async function readCommand(connection, requestId, userId, action, forUpdate = false) {
     const [rows] = await connection.execute(
-      `SELECT user_id, action, response_json FROM levelia_game_high_low_commands
+      `SELECT user_id, action, response_json FROM ${tables.commands}
        WHERE request_id = ?${forUpdate ? ' FOR UPDATE' : ''}`,
       [requestId],
     );
@@ -128,7 +128,7 @@ export function createHighLowStore(mysqlUrl, {
 
   async function saveCommand(connection, { requestId, userId, handId, action, response }) {
     await connection.execute(
-      `INSERT INTO levelia_game_high_low_commands
+      `INSERT INTO ${tables.commands}
        (request_id, user_id, hand_id, action, response_json, created_at)
        VALUES (?, ?, ?, ?, ?, UTC_TIMESTAMP(3))`,
       [requestId, userId, handId, action, JSON.stringify(response)],
@@ -136,10 +136,16 @@ export function createHighLowStore(mysqlUrl, {
   }
 
   async function lockAccount(connection, userId) {
+    if (virtual) {
+      const [[wallet]] = await connection.execute(
+        `SELECT wallet FROM ${walletTable} WHERE user_id = ? FOR UPDATE`, [userId]);
+      const [[account]] = await connection.execute(
+        'SELECT is_frozen FROM accounts WHERE user_id = ?', [userId]);
+      if (!wallet || !account) throw new ApiError(409, 'account_not_found', 'テスト用の仮想残高が見つかりません');
+      return { wallet: Number(wallet.wallet), isFrozen: Boolean(account.is_frozen) };
+    }
     const [rows] = await connection.execute(
-      'SELECT wallet, is_frozen FROM accounts WHERE user_id = ? FOR UPDATE',
-      [userId],
-    );
+      'SELECT wallet, is_frozen FROM accounts WHERE user_id = ? FOR UPDATE', [userId]);
     const row = rows[0];
     if (!row) throw new ApiError(409, 'account_not_found', 'LEVELIAの口座が見つかりません');
     return { wallet: Number(row.wallet), isFrozen: Boolean(row.is_frozen) };
@@ -156,6 +162,7 @@ export function createHighLowStore(mysqlUrl, {
   }
 
   async function readGameAccountWallet(connection) {
+    if (virtual) return 0;
     const [rows] = await connection.execute(
       'SELECT wallet FROM accounts WHERE user_id = ? LIMIT 1',
       [LEVELIA_GAME_USER_ID],
@@ -174,6 +181,7 @@ export function createHighLowStore(mysqlUrl, {
     gameWallet,
     comment,
   }) {
+    if (virtual) return;
     const payout = type === 'high_low_payout';
     await connection.execute(
       `INSERT INTO actions
@@ -187,7 +195,7 @@ export function createHighLowStore(mysqlUrl, {
 
   async function selectHand(connection, handId, userId, forUpdate = false) {
     const [rows] = await connection.execute(
-      `SELECT ${handColumns} FROM levelia_game_high_low_hands
+      `SELECT ${handColumns} FROM ${tables.hands}
        WHERE id = ? AND user_id = ?${forUpdate ? ' FOR UPDATE' : ''}`,
       [handId, userId],
     );
@@ -196,14 +204,16 @@ export function createHighLowStore(mysqlUrl, {
 
   async function creditPayout(connection, hand, { requestId = null, automatic = false, reason }) {
     const payout = Number(hand.potential_payout);
-    if (payout <= 0) throw new ApiError(409, 'cashout_not_available', 'まだ精算できる配当がありません');
+    if (Number(hand.streak) <= 0 || !Number.isSafeInteger(payout) || payout < 0) {
+      throw new ApiError(409, 'cashout_not_available', 'まだ精算できる配当がありません');
+    }
     const account = await lockAccount(connection, String(hand.user_id));
     const walletAfter = account.wallet + payout;
     assertWalletRange(walletAfter);
     const gameWallet = await readGameAccountWallet(connection);
-    await connection.execute('UPDATE accounts SET wallet = ? WHERE user_id = ?', [walletAfter, hand.user_id]);
+    await connection.execute(`UPDATE ${walletTable} SET wallet = ? WHERE user_id = ?`, [walletAfter, hand.user_id]);
     await connection.execute(
-      `INSERT INTO levelia_game_high_low_ledger
+      `INSERT INTO ${tables.ledger}
        (hand_id, user_id, kind, amount, wallet_before, wallet_after, supply_delta, request_id, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP(3))`,
       [hand.id, hand.user_id, automatic ? 'auto_payout_credit' : 'payout_credit', payout,
@@ -218,7 +228,7 @@ export function createHighLowStore(mysqlUrl, {
       comment: `ハイ&ロー ${Number(hand.streak)}連勝${automatic ? '・自動精算' : ''}`,
     });
     await connection.execute(
-      `UPDATE levelia_game_high_low_hands
+      `UPDATE ${tables.hands}
        SET status = ?, settlement_amount = ?, settlement_reason = ?, settled_at = UTC_TIMESTAMP(3),
            updated_at = UTC_TIMESTAMP(3), version = version + 1
        WHERE id = ?`,
@@ -228,9 +238,67 @@ export function createHighLowStore(mysqlUrl, {
   }
 
   async function readWallet(userId) {
-    const [rows] = await getPool().execute('SELECT wallet FROM accounts WHERE user_id = ? LIMIT 1', [userId]);
+    const [rows] = await getPool().execute(`SELECT wallet FROM ${walletTable} WHERE user_id = ? LIMIT 1`, [userId]);
     const wallet = rows[0]?.wallet;
     return wallet === undefined ? null : String(wallet);
+  }
+
+  async function readPayoutConfig(connection = getPool()) {
+    const [rows] = await connection.execute(
+      `SELECT correction_ppm, version, updated_by, target_rtp_ppm, calibration_id FROM ${tables.settings} WHERE id = 1`,
+    );
+    if (!rows[0]) throw new ApiError(503, 'payout_settings_missing', '配当設定がありません。マイグレーションを確認してください');
+    return { correctionPpm: validateCorrectionPpm(Number(rows[0].correction_ppm)),
+      version: Number(rows[0].version), updatedBy: rows[0].updated_by,
+      targetRtpPpm: rows[0].target_rtp_ppm === null ? null : Number(rows[0].target_rtp_ppm), calibrationId: rows[0].calibration_id };
+  }
+
+  async function setPayoutCorrection({ correctionPpm, actorId, requestId, targetRtpPpm = null, calibrationId = null }) {
+    validateCorrectionPpm(correctionPpm);
+    if (!/^[1-9]\d{16,19}$/.test(actorId) || !/^[1-9]\d{16,19}$/.test(requestId)) {
+      throw new ApiError(400, 'invalid_setting_request', '管理者IDまたは操作IDが不正です');
+    }
+    const connection = await getPool().getConnection();
+    try {
+      await connection.beginTransaction();
+      const [settings] = await connection.execute(
+        `SELECT correction_ppm, version FROM ${tables.settings} WHERE id = 1 FOR UPDATE`,
+      );
+      if (!settings[0]) throw new ApiError(503, 'payout_settings_missing', '配当設定がありません');
+      const [replayed] = await connection.execute(
+        `SELECT actor_id, previous_ppm, correction_ppm, version, target_rtp_ppm, calibration_id FROM ${tables.setting_changes} WHERE request_id = ?`, [requestId],
+      );
+      if (replayed[0]) {
+        const previous = replayed[0];
+        if (previous.actor_id !== actorId || Number(previous.correction_ppm) !== correctionPpm
+          || (previous.target_rtp_ppm === null ? null : Number(previous.target_rtp_ppm)) !== targetRtpPpm
+          || previous.calibration_id !== calibrationId) {
+          throw new ApiError(409, 'request_id_reused', '同じ操作IDを別の設定には使用できません');
+        }
+        await connection.commit();
+        return { previousPpm: Number(previous.previous_ppm), correctionPpm, version: Number(previous.version), targetRtpPpm, calibrationId };
+      }
+      const previousPpm = Number(settings[0].correction_ppm);
+      const version = Number(settings[0].version) + 1;
+      await connection.execute(
+        `UPDATE ${tables.settings} SET correction_ppm = ?, version = ?, updated_by = ?, target_rtp_ppm = ?, calibration_id = ?, updated_at = UTC_TIMESTAMP(3) WHERE id = 1`,
+        [correctionPpm, version, actorId, targetRtpPpm, calibrationId],
+      );
+      await connection.execute(
+        `INSERT INTO ${tables.setting_changes} (request_id, actor_id, previous_ppm, correction_ppm, version, target_rtp_ppm, calibration_id, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP(3))`, [requestId, actorId, previousPpm, correctionPpm, version, targetRtpPpm, calibrationId],
+      );
+      await connection.commit();
+      return { previousPpm, correctionPpm, version, targetRtpPpm, calibrationId };
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally { connection.release(); }
+  }
+
+  async function setTargetRtp({ targetRtpPpm, actorId, requestId }) {
+    return setPayoutCorrection({ correctionPpm: correctionForTarget(targetRtpPpm),
+      targetRtpPpm, calibrationId: RTP_CALIBRATION_ID, actorId, requestId });
   }
 
   async function start({ userId, wager, requestId }) {
@@ -250,7 +318,7 @@ export function createHighLowStore(mysqlUrl, {
       if (account.isFrozen) throw new ApiError(403, 'account_frozen', '凍結中の口座ではゲームを開始できません');
       await assertMainAccount(connection, userId);
       const [activeRows] = await connection.execute(
-        `SELECT id FROM levelia_game_high_low_hands
+        `SELECT id FROM ${tables.hands}
          WHERE user_id = ? AND status = 'active' LIMIT 1 FOR UPDATE`,
         [userId],
       );
@@ -259,21 +327,21 @@ export function createHighLowStore(mysqlUrl, {
       }
       if (account.wallet < wager) throw new ApiError(409, 'insufficient_balance', 'LIA残高が不足しています');
 
-      const deck = createSecureDeck(randomIndex);
-      const opening = drawActionableCard(deck);
+      const opening = drawActionableCard(randomIndex);
+      const payoutState = createPayoutState(await readPayoutConfig(connection));
       const walletAfter = account.wallet - wager;
       const [insert] = await connection.execute(
-        `INSERT INTO levelia_game_high_low_hands
-         (user_id, status, wager, streak, potential_payout, current_card, remaining_deck,
+        `INSERT INTO ${tables.hands}
+         (user_id, status, wager, streak, potential_payout, current_card, payout_state,
           rules_version, version, last_heartbeat_at, expires_at, created_at, updated_at)
          VALUES (?, 'active', ?, 0, 0, ?, ?, ?, 1, UTC_TIMESTAMP(3),
                  DATE_ADD(UTC_TIMESTAMP(3), INTERVAL ${HAND_LIFETIME_MINUTES} MINUTE), UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))`,
-        [userId, wager, opening.cardId, JSON.stringify(deck), HIGH_LOW_RULES_VERSION],
+        [userId, wager, opening.cardId, JSON.stringify(payoutState), HIGH_LOW_RULES_VERSION],
       );
       const handId = insert.insertId;
-      await connection.execute('UPDATE accounts SET wallet = ? WHERE user_id = ?', [walletAfter, userId]);
+      await connection.execute(`UPDATE ${walletTable} SET wallet = ? WHERE user_id = ?`, [walletAfter, userId]);
       await connection.execute(
-        `INSERT INTO levelia_game_high_low_ledger
+        `INSERT INTO ${tables.ledger}
          (hand_id, user_id, kind, amount, wallet_before, wallet_after, supply_delta, request_id, created_at)
          VALUES (?, ?, 'wager_debit', ?, ?, ?, ?, ?, UTC_TIMESTAMP(3))`,
         [handId, userId, wager, account.wallet, walletAfter, -wager, requestId],
@@ -311,7 +379,7 @@ export function createHighLowStore(mysqlUrl, {
          SELECT streak, COALESCE(SUM(status = 'lost') OVER (
            ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
          ), 0) AS loss_group
-         FROM levelia_game_high_low_hands WHERE user_id = ?
+         FROM ${tables.hands} WHERE user_id = ?
        ), winning_runs AS (
          SELECT SUM(streak) AS wins FROM grouped_hands GROUP BY loss_group
        )
@@ -354,14 +422,22 @@ export function createHighLowStore(mysqlUrl, {
       }
 
       const previousCardId = hand.current_card;
+      if (Number(hand.rules_version) !== HIGH_LOW_RULES_VERSION) throw new Error('Unsupported high-low rules version');
+      const oldPayoutState = parsePayoutState(hand.payout_state);
+      const winningState = advancePayoutState(oldPayoutState, previousCardId, playerGuess);
+      if (!winningState) throw new ApiError(409, 'guess_unavailable', 'その方向を選択できません');
+      const winningPayout = progressivePayout(Number(hand.wager), Number(hand.streak) + 1, winningState);
+      // Reject an unpayable offer before drawing; never cap or silently reduce a promised payout.
+      const account = await lockAccount(connection, userId);
+      assertWalletRange(account.wallet + winningPayout);
       const resolution = resolveServerGuess({
         currentCardId: previousCardId,
-        deck: parseDeck(hand.remaining_deck),
         guess: playerGuess,
         randomIndex,
       });
       const nextStreak = resolution.result === 'win' ? Number(hand.streak) + 1 : Number(hand.streak);
-      const potentialPayout = calculatePayout(Number(hand.wager), nextStreak);
+      const potentialPayout = resolution.result === 'win' ? winningPayout : Number(hand.potential_payout);
+      const nextPayoutState = resolution.result === 'win' ? winningState : oldPayoutState;
       const event = {
         guess: playerGuess,
         result: resolution.result,
@@ -374,11 +450,11 @@ export function createHighLowStore(mysqlUrl, {
 
       if (resolution.result === 'loss') {
         await connection.execute(
-          `UPDATE levelia_game_high_low_hands
-           SET status = 'lost', current_card = ?, remaining_deck = ?, settlement_reason = 'loss',
+          `UPDATE ${tables.hands}
+           SET status = 'lost', current_card = ?, settlement_reason = 'loss',
                settled_at = UTC_TIMESTAMP(3), updated_at = UTC_TIMESTAMP(3), version = version + 1
            WHERE id = ?`,
-          [resolution.finalCardId, JSON.stringify(resolution.deck), hand.id],
+          [resolution.finalCardId, hand.id],
         );
         const response = {
           hand: null,
@@ -392,11 +468,12 @@ export function createHighLowStore(mysqlUrl, {
       }
 
       await connection.execute(
-        `UPDATE levelia_game_high_low_hands
-         SET streak = ?, potential_payout = ?, current_card = ?, remaining_deck = ?,
+        `UPDATE ${tables.hands}
+         SET streak = ?, potential_payout = ?, current_card = ?, payout_state = ?,
              last_heartbeat_at = UTC_TIMESTAMP(3), updated_at = UTC_TIMESTAMP(3), version = version + 1
          WHERE id = ?`,
-        [nextStreak, potentialPayout, resolution.currentAfterCardId, JSON.stringify(resolution.deck), hand.id],
+        [nextStreak, potentialPayout, resolution.currentAfterCardId,
+          JSON.stringify(nextPayoutState), hand.id],
       );
 
       let response;
@@ -463,7 +540,7 @@ export function createHighLowStore(mysqlUrl, {
     try {
       await connection.beginTransaction();
       const [rows] = await connection.execute(
-        `SELECT ${handColumns} FROM levelia_game_high_low_hands
+        `SELECT ${handColumns} FROM ${tables.hands}
          WHERE id = ? FOR UPDATE`,
         [handId],
       );
@@ -486,7 +563,7 @@ export function createHighLowStore(mysqlUrl, {
         });
       } else {
         await connection.execute(
-          `UPDATE levelia_game_high_low_hands
+          `UPDATE ${tables.hands}
            SET status = 'expired', settlement_reason = ?, settled_at = UTC_TIMESTAMP(3),
                updated_at = UTC_TIMESTAMP(3), version = version + 1
            WHERE id = ?`,
@@ -503,28 +580,44 @@ export function createHighLowStore(mysqlUrl, {
     }
   }
 
-  async function expireInactiveHands() {
+  async function runExpirationBatch() {
     const [rows] = await getPool().execute(
-      `SELECT id FROM levelia_game_high_low_hands
-       WHERE status = 'active'
+      `SELECT id FROM ${tables.hands}
+       WHERE status = 'active' AND id > ?
          AND (last_heartbeat_at <= DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 5 MINUTE)
               OR expires_at <= UTC_TIMESTAMP(3))
        ORDER BY id LIMIT 50`,
+      [expirationCursor],
     );
-    for (const row of rows) await settleExpiredHand(row.id);
+    for (const row of rows) {
+      try {
+        await settleExpiredHand(row.id);
+      } catch (error) {
+        // The transaction rolled back; leave this hand for a later pass.
+        console.error('High-low hand expiration failed', { handId: String(row.id), ...errorMetadata(error) });
+      }
+    }
+    // Advance past failures too, otherwise 50 unpayable hands starve all others.
+    expirationCursor = rows.length === 50 ? String(rows.at(-1).id) : '0';
     return rows.length;
+  }
+
+  function expireInactiveHands() {
+    // A slow batch must not overlap the next interval in the same process.
+    expirationRun ??= runExpirationBatch().finally(() => { expirationRun = null; });
+    return expirationRun;
   }
 
   async function readSession(userId) {
     ensureWorker();
     const [accounts] = await getPool().execute(
-      'SELECT wallet FROM accounts WHERE user_id = ? LIMIT 1',
+      `SELECT wallet FROM ${walletTable} WHERE user_id = ? LIMIT 1`,
       [userId],
     );
     const account = accounts[0];
     if (!account) return { accountFound: false, wallet: null, hand: null, bestStreak: 0 };
     const [rows] = await getPool().execute(
-      `SELECT ${handColumns} FROM levelia_game_high_low_hands
+      `SELECT ${handColumns} FROM ${tables.hands}
        WHERE user_id = ? AND status = 'active' LIMIT 1`,
       [userId],
     );
@@ -540,7 +633,7 @@ export function createHighLowStore(mysqlUrl, {
   async function heartbeat({ userId, handId }) {
     ensureWorker();
     const [result] = await getPool().execute(
-      `UPDATE levelia_game_high_low_hands
+      `UPDATE ${tables.hands}
        SET last_heartbeat_at = UTC_TIMESTAMP(3), updated_at = UTC_TIMESTAMP(3)
        WHERE id = ? AND user_id = ? AND status = 'active' AND expires_at > UTC_TIMESTAMP(3)
          AND last_heartbeat_at > DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 5 MINUTE)`,
@@ -550,11 +643,17 @@ export function createHighLowStore(mysqlUrl, {
     return { ok: true };
   }
 
+  const readLeaderboard = createHighLowLeaderboard({ getPool, tables });
+
   if (mysqlUrl) ensureWorker();
 
   return {
+    readPayoutConfig,
+    setPayoutCorrection,
+    setTargetRtp,
     readWallet,
     readBestStreak,
+    readLeaderboard,
     readSession,
     start,
     guess,
@@ -564,6 +663,7 @@ export function createHighLowStore(mysqlUrl, {
     async close() {
       if (worker) clearInterval(worker);
       worker = null;
+      if (expirationRun) await expirationRun.catch(() => {});
       if (pool) await pool.end();
       pool = null;
     },
