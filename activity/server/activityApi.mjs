@@ -59,11 +59,12 @@ async function verifiedUser(request, fetchImpl) {
 export function createActivityApi({
   env = process.env,
   fetchImpl = fetch,
+  now = Date.now,
   highLowStore = createHighLowStore(readMysqlUrl(env), { walletMode: readWalletMode(env) }),
 } = {}) {
   const accessPolicy = createAccessPolicy(env);
   const walletMode = readWalletMode(env);
-  const interactions = createDiscordInteractions({ env, store: highLowStore, fetchImpl });
+  const interactions = createDiscordInteractions({ env, store: highLowStore, fetchImpl, now });
   const addLeaderboardProfiles = createLeaderboardProfiles({ env, fetchImpl });
   return {
     async handle(request, response, url) {

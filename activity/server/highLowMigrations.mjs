@@ -45,6 +45,12 @@ export async function migrateHighLow(connection) {
         if (!indexes.length) await connection.query(`ALTER TABLE ${table} ADD INDEX ${name} (${columns})`);
       }
     }
+    const [statsIndexes] = await connection.execute(
+      "SELECT 1 FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'levelia_game_high_low_ledger' AND INDEX_NAME = 'idx_high_low_stats_created' LIMIT 1",
+    );
+    if (!statsIndexes.length) {
+      await connection.query('ALTER TABLE levelia_game_high_low_ledger ADD INDEX idx_high_low_stats_created (created_at, user_id)');
+    }
   } finally {
     await connection.query("SELECT RELEASE_LOCK('levelia_game_high_low_migrate')");
   }

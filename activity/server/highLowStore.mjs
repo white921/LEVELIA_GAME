@@ -1,5 +1,6 @@
 import { correctionForTarget, RTP_CALIBRATION_ID } from './highLowCalibration.mjs';
 import { createHighLowLeaderboard } from './highLowLeaderboard.mjs';
+import { createCasinoStatsReader } from './casinoStats.mjs';
 import { createPool } from 'mysql2/promise';
 import { ApiError } from './http.mjs';
 import { errorMetadata } from './safeLog.mjs';
@@ -644,6 +645,7 @@ export function createHighLowStore(mysqlUrl, {
   }
 
   const readLeaderboard = createHighLowLeaderboard({ getPool, tables });
+  const readCasinoStats = createCasinoStatsReader({ getPool });
 
   if (mysqlUrl) ensureWorker();
 
@@ -654,6 +656,7 @@ export function createHighLowStore(mysqlUrl, {
     readWallet,
     readBestStreak,
     readLeaderboard,
+    readCasinoStats,
     readSession,
     start,
     guess,

@@ -1,6 +1,11 @@
 import nacl from 'tweetnacl';
 import { ApiError, sendJson, sendMethodNotAllowed } from './http.mjs';
 import { canManageHighLow, executeAdminAction, parseAdminAction } from './highLowAdmin.mjs';
+import {
+  CASINO_STATS_COMMAND,
+  formatCasinoStats,
+  parseCasinoStatsAction,
+} from './casinoStats.mjs';
 import { errorMetadata } from './safeLog.mjs';
 
 const ephemeral = content => ({ type: 4, data: { content, flags: 64, allowed_mentions: { parse: [] } } });
@@ -13,10 +18,16 @@ export function createDiscordInteractions({ env, store, fetchImpl = fetch, now =
 
   async function complete(interaction, action) {
     let content;
-    try { content = await executeAdminAction(store, action, interaction); }
+    try {
+      content = action.command === 'casino-stats'
+        ? formatCasinoStats(action.period, await store.readCasinoStats(action.period.start, action.period.effectiveEnd))
+        : await executeAdminAction(store, action.admin, interaction);
+    }
     catch (error) {
-      console.error('High-low admin command failed', errorMetadata(error));
-      content = '設定の結果を確認できませんでした。時間を置いて /ハイロー還元率 確認 で現在の設定を確認してください。';
+      console.error('High-low management command failed', errorMetadata(error));
+      content = action.command === 'casino-stats'
+        ? 'カジノ統計を取得できませんでした。少し待って再実行してください。'
+        : '設定の結果を確認できませんでした。時間を置いて /ハイロー還元率 確認 で現在の設定を確認してください。';
     }
     try {
       const result = await fetchImpl(`https://discord.com/api/v10/webhooks/${interaction.application_id}/${encodeURIComponent(interaction.token)}/messages/@original`, {
@@ -62,7 +73,11 @@ export function createDiscordInteractions({ env, store, fetchImpl = fetch, now =
         return;
       }
       let action;
-      try { action = parseAdminAction(interaction); }
+      try {
+        action = interaction.data?.name === CASINO_STATS_COMMAND.name
+          ? { command: 'casino-stats', period: parseCasinoStatsAction(interaction, now()) }
+          : { command: 'admin', admin: parseAdminAction(interaction) };
+      }
       catch (error) { sendJson(response, 200, ephemeral(error.message)); return; }
       if (!/^[1-9]\d{16,19}$/.test(interaction.id) || !/^[1-9]\d{16,19}$/.test(interaction.member?.user?.id)
         || typeof interaction.token !== 'string' || !interaction.token.length) {

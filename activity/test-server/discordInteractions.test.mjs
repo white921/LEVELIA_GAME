@@ -4,6 +4,7 @@ import { generateKeyPairSync, sign } from 'node:crypto';
 import { Readable } from 'node:stream';
 import { createActivityApi } from '../server/activityApi.mjs';
 import { MANAGEMENT_ROLE_IDS } from '../server/highLowAdmin.mjs';
+import { CASINO_STATS_COMMAND } from '../server/casinoStats.mjs';
 
 const { publicKey, privateKey } = generateKeyPairSync('ed25519');
 const appId = '1552246348756025344', guildId = '1534636292153807039';
@@ -13,9 +14,9 @@ const base = { id: '1555555555555555555', application_id: appId, guild_id: guild
   token: 'test-only-token', member: { user: { id: '649438093996195851' }, roles: [MANAGEMENT_ROLE_IDS[0]] },
   data: { name: 'ハイロー還元率', type: 1, options: [{ name: '設定', type: 1, options: [{ name: '目標', type: 10, value: 98.46 }] }] } };
 function response() { return { writeHead(code) { this.status = code; }, setHeader() {}, end(body) { this.body = JSON.parse(body); } }; }
-function request(payload, { old = false, tamper = false } = {}) {
+function request(payload, { old = false, tamper = false, now = Date.now() } = {}) {
   const body = JSON.stringify(payload);
-  const timestamp = String(Math.floor(Date.now()/1000) - (old ? 1000 : 0));
+  const timestamp = String(Math.floor(now/1000) - (old ? 1000 : 0));
   const signature = sign(null, Buffer.from(timestamp + body), privateKey).toString('hex');
   const req = Readable.from([Buffer.from(tamper ? body + ' ' : body)]);
   req.method = 'POST'; req.headers = { 'x-signature-timestamp': timestamp, 'x-signature-ed25519': signature };
@@ -83,4 +84,38 @@ test('a signed show command reads only; malformed correction values do not reach
     assert.equal(res.body.type, 4);
   }
   await api.close(); assert.equal(reads, 1); assert.equal(writes, 0);
+});
+
+test('a signed casino statistics command uses an inclusive JST date range and replies ephemerally', async () => {
+  const calls = [], replies = [];
+  const now = Date.parse('2026-10-05T12:00:00Z');
+  const api = createActivityApi({ env, now: () => now, highLowStore: {
+    async readCasinoStats(start, end) {
+      calls.push([start.toISOString(), end.toISOString()]);
+      return {
+        players: [{ userId: '111111111111111111', wagers: 1000n, payouts: 1500n, net: 500n }],
+        wagers: 1000n, payouts: 1500n, net: 500n,
+      };
+    },
+    async close() {},
+  }, fetchImpl: async (url, init) => {
+    replies.push({ url, body: JSON.parse(init.body) });
+    return new Response('{}');
+  } });
+  const payload = {
+    ...base,
+    data: { name: CASINO_STATS_COMMAND.name, type: 1, options: [
+      { name: '開始日', type: 3, value: '2026-10-01' },
+      { name: '終了日', type: 3, value: '2026-10-04' },
+    ] },
+  };
+  const res = response();
+  await api.handle(request(payload, { now }), res, new URL('http://local/api/discord/interactions'));
+  assert.deepEqual(res.body, { type: 5, data: { flags: 64 } });
+  await api.close();
+  assert.deepEqual(calls, [['2026-09-30T15:00:00.000Z', '2026-10-04T15:00:00.000Z']]);
+  assert.equal(replies.length, 1);
+  assert.match(replies[0].body.content, /最高利益：<@111111111111111111>（\+500 LIA）/);
+  assert.match(replies[0].body.content, /還元率：150%/);
+  assert.deepEqual(replies[0].body.allowed_mentions, { parse: [] });
 });
