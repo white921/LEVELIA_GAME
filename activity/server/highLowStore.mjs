@@ -318,19 +318,13 @@ export function createHighLowStore(mysqlUrl, {
       }
       if (account.isFrozen) throw new ApiError(403, 'account_frozen', '凍結中の口座ではゲームを開始できません');
       await assertMainAccount(connection, userId);
-      const [activeRows] = await connection.execute(
-        `SELECT id FROM ${tables.hands}
-         WHERE active_user_id = ? LIMIT 1 FOR UPDATE`,
-        [userId],
-      );
-      if (activeRows.length > 0) {
-        throw new ApiError(409, 'active_hand_exists', '進行中のゲームがあります');
-      }
       if (account.wallet < wager) throw new ApiError(409, 'insufficient_balance', 'LIA残高が不足しています');
 
       const opening = drawActionableCard(randomIndex);
       const payoutState = createPayoutState(await readPayoutConfig(connection));
       const walletAfter = account.wallet - wager;
+      // Let uq_high_low_active_user reject a second active hand. A preflight
+      // SELECT ... FOR UPDATE on a missing key gap deadlocks concurrent users.
       const [insert] = await connection.execute(
         `INSERT INTO ${tables.hands}
          (user_id, status, wager, streak, potential_payout, current_card, payout_state,
