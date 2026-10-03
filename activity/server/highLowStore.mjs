@@ -320,7 +320,7 @@ export function createHighLowStore(mysqlUrl, {
       await assertMainAccount(connection, userId);
       const [activeRows] = await connection.execute(
         `SELECT id FROM ${tables.hands}
-         WHERE user_id = ? AND status = 'active' LIMIT 1 FOR UPDATE`,
+         WHERE active_user_id = ? LIMIT 1 FOR UPDATE`,
         [userId],
       );
       if (activeRows.length > 0) {
