@@ -9,11 +9,12 @@ import {
   parseCasinoStatsPeriod,
 } from '../server/casinoStats.mjs';
 
-test('casino statistics command requires a start date and has an optional end date', () => {
+test('casino statistics command requires a start date and has optional end date and user', () => {
   assert.equal(CASINO_STATS_COMMAND.name, 'カジノ統計');
-  assert.deepEqual(CASINO_STATS_COMMAND.options.map(option => [option.name, option.required]), [
-    ['開始日', true],
-    ['終了日', false],
+  assert.deepEqual(CASINO_STATS_COMMAND.options.map(option => [option.name, option.type, option.required]), [
+    ['開始日', 3, true],
+    ['終了日', 3, false],
+    ['ユーザー', 6, false],
   ]);
 });
 
@@ -45,13 +46,37 @@ test('casino statistics action accepts options in either order but rejects malfo
   const interaction = {
     type: 2,
     data: { name: 'カジノ統計', type: 1, options: [
+      { type: 6, name: 'ユーザー', value: '111111111111111111' },
       { type: 3, name: '終了日', value: '2026-10-04' },
       { type: 3, name: '開始日', value: '2026-10-01' },
     ] },
   };
-  assert.equal(parseCasinoStatsAction(interaction, now).startDate, '2026-10-01');
+  const action = parseCasinoStatsAction(interaction, now);
+  assert.deepEqual(
+    { startDate: action.startDate, userId: action.userId },
+    { startDate: '2026-10-01', userId: '111111111111111111' },
+  );
   assert.throws(() => parseCasinoStatsAction({ ...interaction,
     data: { ...interaction.data, options: [{ type: 3, name: '終了日', value: '2026-10-04' }] } }, now), CasinoStatsInputError);
+  assert.throws(() => parseCasinoStatsAction({ ...interaction,
+    data: { ...interaction.data, options: [
+      { type: 3, name: '開始日', value: '2026-10-01' },
+      { type: 6, name: 'ユーザー', value: 'invalid' },
+    ] } }, now), CasinoStatsInputError);
+});
+
+test('casino statistics limits the real-ledger query to an optional user', async () => {
+  const calls = [];
+  const read = createCasinoStatsReader({ getPool: () => ({ async execute(sql, values) {
+    calls.push({ sql, values });
+    return [[{ user_id: '111111111111111111', wagers: '1000', payouts: '1500', net: '500' }]];
+  } }) });
+  const start = new Date('2026-10-03T15:00:00Z');
+  const end = new Date('2026-10-04T15:00:00Z');
+  const stats = await read(start, end, '111111111111111111');
+  assert.match(calls[0].sql, /AND user_id = \?/);
+  assert.deepEqual(calls[0].values, [start, end, '111111111111111111']);
+  assert.equal(stats.net, 500n);
 });
 
 test('casino statistics reads only the real ledger and aggregates exact integer totals', async () => {
@@ -99,4 +124,20 @@ test('casino statistics handles periods without wagers', () => {
   assert.match(output, /最高利益：該当なし/);
   assert.match(output, /最大損失：該当なし/);
   assert.match(output, /還元率：算出不可（賭け金なし）/);
+});
+
+test('casino statistics formats a selected user without server extrema', () => {
+  const period = {
+    ...parseCasinoStatsPeriod({ startDate: '2026-10-03' }, Date.parse('2026-10-05T00:00:00Z')),
+    userId: '111111111111111111',
+  };
+  const output = formatCasinoStats(period, {
+    players: [{ userId: period.userId, wagers: 1000n, payouts: 1500n, net: 500n }],
+    wagers: 1000n, payouts: 1500n, net: 500n,
+  });
+  assert.match(output, /カジノ統計（ユーザー指定）/);
+  assert.match(output, /対象ユーザー：<@111111111111111111>/);
+  assert.match(output, /純損益：\+500 LIA/);
+  assert.match(output, /還元率：150%/);
+  assert.doesNotMatch(output, /最高利益|最大損失|サーバー全体損益/);
 });

@@ -20,7 +20,9 @@ export function createDiscordInteractions({ env, store, fetchImpl = fetch, now =
     let content;
     try {
       content = action.command === 'casino-stats'
-        ? formatCasinoStats(action.period, await store.readCasinoStats(action.period.start, action.period.effectiveEnd))
+        ? formatCasinoStats(action.period, await store.readCasinoStats(
+          action.period.start, action.period.effectiveEnd, action.period.userId,
+        ))
         : await executeAdminAction(store, action.admin, interaction);
     }
     catch (error) {

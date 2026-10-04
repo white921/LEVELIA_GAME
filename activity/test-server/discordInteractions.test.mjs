@@ -90,8 +90,8 @@ test('a signed casino statistics command uses an inclusive JST date range and re
   const calls = [], replies = [];
   const now = Date.parse('2026-10-05T12:00:00Z');
   const api = createActivityApi({ env, now: () => now, highLowStore: {
-    async readCasinoStats(start, end) {
-      calls.push([start.toISOString(), end.toISOString()]);
+    async readCasinoStats(start, end, userId) {
+      calls.push([start.toISOString(), end.toISOString(), userId]);
       return {
         players: [{ userId: '111111111111111111', wagers: 1000n, payouts: 1500n, net: 500n }],
         wagers: 1000n, payouts: 1500n, net: 500n,
@@ -107,15 +107,17 @@ test('a signed casino statistics command uses an inclusive JST date range and re
     data: { name: CASINO_STATS_COMMAND.name, type: 1, options: [
       { name: '開始日', type: 3, value: '2026-10-01' },
       { name: '終了日', type: 3, value: '2026-10-04' },
+      { name: 'ユーザー', type: 6, value: '111111111111111111' },
     ] },
   };
   const res = response();
   await api.handle(request(payload, { now }), res, new URL('http://local/api/discord/interactions'));
   assert.deepEqual(res.body, { type: 5, data: { flags: 64 } });
   await api.close();
-  assert.deepEqual(calls, [['2026-09-30T15:00:00.000Z', '2026-10-04T15:00:00.000Z']]);
+  assert.deepEqual(calls, [['2026-09-30T15:00:00.000Z', '2026-10-04T15:00:00.000Z', '111111111111111111']]);
   assert.equal(replies.length, 1);
-  assert.match(replies[0].body.content, /最高利益：<@111111111111111111>（\+500 LIA）/);
+  assert.match(replies[0].body.content, /対象ユーザー：<@111111111111111111>/);
+  assert.match(replies[0].body.content, /純損益：\+500 LIA/);
   assert.match(replies[0].body.content, /還元率：150%/);
   assert.deepEqual(replies[0].body.allowed_mentions, { parse: [] });
 });

@@ -23,6 +23,12 @@ export const CASINO_STATS_COMMAND = Object.freeze({
       min_length: 10,
       max_length: 10,
     },
+    {
+      type: 6,
+      name: 'ユーザー',
+      description: '指定したユーザーだけの純損益・賭け金・配当・還元率を表示します',
+      required: false,
+    },
   ],
 });
 
@@ -61,17 +67,21 @@ export function parseCasinoStatsAction(interaction, now = Date.now()) {
     || interaction.data?.type !== 1 || !Array.isArray(options)) {
     throw new CasinoStatsInputError('未対応のコマンドです。');
   }
-  const allowed = new Set(['開始日', '終了日']);
-  if (options.some(option => option.type !== 3 || !allowed.has(option.name))
+  const allowed = new Map([['開始日', 3], ['終了日', 3], ['ユーザー', 6]]);
+  if (options.some(option => option.type !== allowed.get(option.name))
     || new Set(options.map(option => option.name)).size !== options.length) {
-    throw new CasinoStatsInputError('日付の指定が不正です。');
+    throw new CasinoStatsInputError('オプションの指定が不正です。');
   }
   const startDate = options.find(option => option.name === '開始日')?.value;
   const endDate = options.find(option => option.name === '終了日')?.value;
+  const userId = options.find(option => option.name === 'ユーザー')?.value;
   if (typeof startDate !== 'string' || (endDate !== undefined && typeof endDate !== 'string')) {
     throw new CasinoStatsInputError('開始日を指定してください。');
   }
-  return parseCasinoStatsPeriod({ startDate, endDate }, now);
+  if (userId !== undefined && (typeof userId !== 'string' || !/^[1-9]\d{16,19}$/.test(userId))) {
+    throw new CasinoStatsInputError('ユーザーの指定が不正です。');
+  }
+  return { ...parseCasinoStatsPeriod({ startDate, endDate }, now), userId: userId ?? null };
 }
 
 function asBigInt(value) {
@@ -79,16 +89,16 @@ function asBigInt(value) {
 }
 
 export function createCasinoStatsReader({ getPool }) {
-  return async function readCasinoStats(start, end) {
+  return async function readCasinoStats(start, end, userId = null) {
     const [rows] = await getPool().execute(
       `SELECT CAST(user_id AS CHAR) AS user_id,
          SUM(CASE WHEN kind = 'wager_debit' THEN amount ELSE 0 END) AS wagers,
          SUM(CASE WHEN kind IN ('payout_credit', 'auto_payout_credit') THEN amount ELSE 0 END) AS payouts,
          SUM(supply_delta) AS net
        FROM levelia_game_high_low_ledger
-       WHERE created_at >= ? AND created_at < ?
+       WHERE created_at >= ? AND created_at < ?${userId ? ' AND user_id = ?' : ''}
        GROUP BY user_id`,
-      [start, end],
+      userId ? [start, end, userId] : [start, end],
     );
     const players = rows.map(row => ({
       userId: String(row.user_id),
@@ -138,13 +148,27 @@ function formatJstMinute(date) {
 }
 
 export function formatCasinoStats(period, stats) {
+  const title = period.userId ? '**カジノ統計（ユーザー指定）**' : '**カジノ統計**';
   const highestProfit = extrema(stats.players, (value, best) => value > best, value => value > 0n);
   const largestLoss = extrema(stats.players, (value, best) => value < best, value => value < 0n);
   const lines = [
-    '**カジノ統計**',
+    title,
     `対象期間：${period.startDate}${period.endDate === period.startDate ? '' : ` ～ ${period.endDate}`}（JST）`,
   ];
   if (period.effectiveEnd < period.end) lines.push(`集計時点：${formatJstMinute(period.effectiveEnd)} JST（途中）`);
+  if (period.userId) {
+    lines.push(
+      `対象ユーザー：<@${period.userId}>`,
+      '',
+      `純損益：${signedLia(stats.net)}`,
+      `還元率：${formatRtp(stats.wagers, stats.payouts)}`,
+      '',
+      `賭け金合計：${asBigInt(stats.wagers).toLocaleString('ja-JP')} LIA`,
+      `配当合計：${asBigInt(stats.payouts).toLocaleString('ja-JP')} LIA`,
+      '実残高の台帳に期間内に記録された、このユーザーの賭け金・配当だけを集計しています。',
+    );
+    return lines.join('\n');
+  }
   lines.push(
     '',
     `最高利益：${formatPlayers(highestProfit)}`,
@@ -158,4 +182,3 @@ export function formatCasinoStats(period, stats) {
   );
   return lines.join('\n');
 }
-
